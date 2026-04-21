@@ -4,7 +4,8 @@
 ![License](https://img.shields.io/badge/License-MIT-green.svg)
 ![Vibe Coding](https://img.shields.io/badge/Vibe-Coding-brightgreen.svg)
 
-一个纯 Lua 5.4 库，用于声明式 SVG 布局和渲染，**零外部依赖**，**项目完全使用AI开发**，**项目由AI编写**。
+一个纯 Lua 5.4 库，用于声明式 SVG 布局和渲染，**零外部依赖**，**项目完全使用AI开发**
+> **该文档由AI编写**。
 
 ## ✨ 特性亮点
 
