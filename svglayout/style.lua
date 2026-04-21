@@ -6,6 +6,9 @@
 
 local M = {}
 
+---规范化间距值为四元数组 [top, right, bottom, left]
+---@param p number|table|nil 间距值，可以是数字、数组或表
+---@return number[] 四元数组 [top, right, bottom, left]
 function M.normalize_spacing(p)
     if p == nil then return { 0, 0, 0, 0 } end
     if type(p) == "number" then return { p, p, p, p } end
@@ -14,6 +17,10 @@ function M.normalize_spacing(p)
     return { p.top or 0, p.right or 0, p.bottom or 0, p.left or 0 }
 end
 
+---扩展样式表，合并基础样式和覆盖样式
+---@param base table 基础样式表
+---@param override table 覆盖样式表
+---@return table 合并后的样式表
 function M.extend(base, override)
     local r = {}
     for k, v in pairs(base or {}) do r[k] = v end

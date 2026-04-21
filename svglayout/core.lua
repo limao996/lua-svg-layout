@@ -45,7 +45,9 @@ function M.attrs_to_str(attrs)
     return table.concat(parts, " ")
 end
 
----唯一 ID 生成
+---唯一 ID 生成器
+---@param prefix? string ID 前缀，默认为 "id"
+---@return string 唯一 ID 字符串
 local _id = 0
 function M.gen_id(prefix)
     _id = _id + 1

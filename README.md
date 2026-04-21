@@ -1,10 +1,10 @@
 # Lua SVG 布局库
 
-![Lua](https://img.shields.io/badge/Lua-5.4-blue.svg)
+![Lua 5.4](https://img.shields.io/badge/Lua-5.4-blue.svg)
 ![License](https://img.shields.io/badge/License-MIT-green.svg)
-![Zero Dependencies](https://img.shields.io/badge/Dependencies-0-brightgreen.svg)
+![Vibe Coding](https://img.shields.io/badge/Vibe-Coding-brightgreen.svg)
 
-一个纯 Lua 5.4 库，用于声明式 SVG 布局和渲染，**零外部依赖**。
+一个纯 Lua 5.4 库，用于声明式 SVG 布局和渲染，**零外部依赖**，**项目完全使用AI开发**，**项目由AI编写**。
 
 ## ✨ 特性亮点
 
@@ -164,6 +164,7 @@ local stack_svg = svg.render_svg(stack_doc, { width = 300, height = 200 })
 ### 布局与渲染
 - `svg.render_svg(root, opts)` - 渲染单页
 - `svg.render_pages(root, opts)` - 渲染多页，支持分页
+- `svg.paginate_nodes(root, opts)` - 获取分页后的节点数组（不渲染）
 - `svg.define(render_fn)` - 定义自定义组件
 - `svg.register(name, factory)` - 全局注册组件
 
@@ -188,8 +189,8 @@ local stack_svg = svg.render_svg(stack_doc, { width = 300, height = 200 })
 |------|-----|------|
 | `direction` | `"row"`, `"column"` 或 `"stack"` | 布局方向。`"stack"`表示子元素重叠排列 |
 | `gap` | 数字 | 子元素间距（对`"stack"`方向无效） |
-| `justify` | `"start"`, `"center"`, `"end"`, `"space-between"` | 主轴对齐（对`"stack"`方向无效） |
-| `align` | `"start"`, `"center"`, `"end"` | 交叉轴对齐 |
+| `justify` | `"start"`, `"center"`, `"end"`, `"space-between"`, `"space-around"` | 主轴对齐（对`"stack"`方向无效） |
+| `align` | `"start"`, `"center"`, `"end"`, `"stretch"` | 交叉轴对齐 |
 
 ### 文本属性
 | 属性 | 类型 | 说明 |
@@ -489,7 +490,11 @@ svglayout/
 │   ├── 1.lua                   # 基础布局示例
 │   ├── 2.lua                   # 渐变与文本示例
 │   ├── 3.lua                   # 阴影效果示例
-│   └── 4.lua                   # 高级功能示例
+│   ├── 4.lua                   # 弹性布局进阶
+│   ├── 5.lua                   # 综合高级示例
+│   ├── 6.lua                   # 功能分类示例
+│   ├── 7.lua                   # Stack 布局测试
+│   └── README.md               # 示例说明文档
 └── output/                     # 生成的 SVG 文件
 ```
 
@@ -549,14 +554,9 @@ svg.MyComponent {
 }
 ```
 
-### 调试与测试
+### 性能分析
 
 ```lua
--- 启用调试模式
-local svg = require("svglayout")
-svg.set_debug(true)  -- 显示布局边界和测量信息
-
--- 性能分析
 local start_time = os.clock()
 local result = svg.render_svg(doc, options)
 local elapsed = os.clock() - start_time
@@ -586,8 +586,3 @@ print(string.format("渲染耗时: %.3f 秒", elapsed))
 ## 🙏 致谢
 
 感谢所有贡献者和用户的支持！
-
----
-
-**SVG 布局库** - 让 Lua 中的 SVG 布局变得简单而强大！ 🚀
-

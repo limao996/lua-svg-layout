@@ -3,8 +3,13 @@ local render = require("svglayout.render")
 local measure = require("svglayout.text_measure")
 local style_util = require("svglayout.style")
 
+---@class svglayout.components
 local M = {}
 
+---创建节点对象
+---@param type string 节点类型
+---@param props table 属性表
+---@return table 节点对象
 local function make_node(type, props)
     return {
         type = type,
@@ -16,6 +21,9 @@ local function make_node(type, props)
 end
 
 -- ============ Box ============
+---创建弹性容器组件，支持 Flexbox 布局
+---@param props {style?:table, children?:table[]} 组件属性表
+---@return table Box 节点对象
 function M.Box(props)
     props = props or {}
     local node = make_node("box", props)
@@ -30,6 +38,9 @@ function M.Box(props)
 end
 
 -- ============ Text（单行） ============
+---创建单行文本组件，支持字体、对齐等样式
+---@param props {text?:string, style?:table} 组件属性表
+---@return table Text 节点对象
 function M.Text(props)
     props = props or {}
     local node = make_node("text", props)
@@ -71,6 +82,9 @@ function M.Text(props)
 end
 
 -- ============ TextBlock（多行） ============
+---创建多行文本组件，支持自动换行和分页拆分
+---@param props {text?:string, line_height?:number, style?:table} 组件属性表
+---@return table TextBlock 节点对象
 function M.TextBlock(props)
     props = props or {}
     local node = make_node("text_block", props)
@@ -175,6 +189,9 @@ local function shape_measure(self)
     return w, h
 end
 
+---创建矩形组件，支持圆角和填充/描边样式
+---@param props {style?:table} 组件属性表
+---@return table Rect 节点对象
 function M.Rect(props)
     props = props or {}
     local node = make_node("rect", props)
@@ -194,6 +211,9 @@ function M.Rect(props)
     return node
 end
 
+---创建圆形组件，支持半径、填充和描边样式
+---@param props {r?:number, style?:table} 组件属性表
+---@return table Circle 节点对象
 function M.Circle(props)
     props = props or {}
     local node = make_node("circle", props)
@@ -220,6 +240,9 @@ function M.Circle(props)
     return node
 end
 
+---创建线条组件，支持自定义起点和终点坐标
+---@param props {x1?:number, y1?:number, x2?:number, y2?:number, style?:table} 组件属性表
+---@return table Line 节点对象
 function M.Line(props)
     props = props or {}
     local node = make_node("line", props)
@@ -238,6 +261,9 @@ function M.Line(props)
     return node
 end
 
+---创建路径组件，支持 SVG path 数据和样式
+---@param props {d:string, style?:table} 组件属性表
+---@return table Path 节点对象
 function M.Path(props)
     props = props or {}
     local node = make_node("path", props)
@@ -257,6 +283,9 @@ function M.Path(props)
 end
 
 -- ============ Group ============
+---创建 SVG 组件组，用于组合多个元素
+---@param props {style?:table, children?:table[]} 组件属性表
+---@return table Group 节点对象
 function M.Group(props)
     props = props or {}
     local node = make_node("group", props)
@@ -271,6 +300,9 @@ function M.Group(props)
 end
 
 -- ============ Raw ============
+---创建原始 SVG 组件，直接嵌入 SVG 代码
+---@param props {svg?:string, style?:table} 组件属性表
+---@return table Raw 节点对象
 function M.Raw(props)
     props = props or {}
     local node = make_node("raw", props)
@@ -284,6 +316,9 @@ function M.Raw(props)
 end
 
 -- ============ Image ============
+---创建图像组件，支持宽高比控制
+---@param props {href?:string, preserve_aspect_ratio?:string, style?:table} 组件属性表
+---@return table Image 节点对象
 function M.Image(props)
     props = props or {}
     local node = make_node("image", props)

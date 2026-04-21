@@ -25,13 +25,13 @@ M.LinearGradient = defs_mod.LinearGradient
 M.RadialGradient = defs_mod.RadialGradient
 M.Pattern        = defs_mod.Pattern
 
----内部：拼装 SVG 字符串
----@param body string
----@param defs_list string[]
----@param w number
----@param h number
----@param viewBox? string
----@return string
+---内部：拼装完整的 SVG 文档字符串
+---@param body string SVG 主体内容
+---@param defs_list string[] 定义列表（渐变、图案等）
+---@param w number SVG 宽度
+---@param h number SVG 高度
+---@param viewBox? string SVG viewBox 属性
+---@return string 完整的 SVG 文档字符串
 local function wrap_svg(body, defs_list, w, h, viewBox)
     local defs = #defs_list > 0 and ("<defs>" .. table.concat(defs_list, "\n") .. "</defs>") or ""
     return string.format(
