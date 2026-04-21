@@ -93,6 +93,51 @@ f:write(svg_string)
 f:close()
 ```
 
+### Stack 布局示例
+
+```lua
+-- 创建一个重叠布局的文档
+local stack_doc = svg.Box {
+    style = {
+        width = 300,
+        height = 200,
+        background = "#f0f0f0",
+        padding = 20,
+        direction = "stack",  -- 使用stack方向，子元素将重叠
+    },
+    children = {
+        svg.Rect {
+            style = {
+                width = "100%",
+                height = "100%",
+                fill = "#e3f2fd",
+                border_radius = 12,
+            }
+        },
+        svg.Circle {
+            style = {
+                width = 120,
+                height = 120,
+                fill = "#2196f3",
+                opacity = 0.8,
+            }
+        },
+        svg.Text {
+            text = "重叠布局",
+            style = {
+                font_size = 24,
+                color = "#1565c0",
+                font_weight = "bold",
+                text_align = "center",
+            }
+        }
+    }
+}
+
+-- 渲染stack布局
+local stack_svg = svg.render_svg(stack_doc, { width = 300, height = 200 })
+```
+
 ## 📚 核心 API
 
 ### 组件系统
@@ -141,9 +186,9 @@ f:close()
 ### 弹性布局属性
 | 属性 | 值 | 说明 |
 |------|-----|------|
-| `direction` | `"row"` 或 `"column"` | 布局方向 |
-| `gap` | 数字 | 子元素间距 |
-| `justify` | `"start"`, `"center"`, `"end"`, `"space-between"` | 主轴对齐 |
+| `direction` | `"row"`, `"column"` 或 `"stack"` | 布局方向。`"stack"`表示子元素重叠排列 |
+| `gap` | 数字 | 子元素间距（对`"stack"`方向无效） |
+| `justify` | `"start"`, `"center"`, `"end"`, `"space-between"` | 主轴对齐（对`"stack"`方向无效） |
 | `align` | `"start"`, `"center"`, `"end"` | 交叉轴对齐 |
 
 ### 文本属性
