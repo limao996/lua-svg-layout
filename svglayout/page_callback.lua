@@ -39,16 +39,22 @@ function M.PageCallback(props)
             local cursor = 0
             local dir = style.direction or "column"
             local gap = style.gap or 0
-            for i, child in ipairs(self.children) do
-                if i > 1 then cursor = cursor + gap end
-                if dir == "row" then
-                    layout.layout(child, b.content_x + cursor, b.content_y,
-                        b.content_w - cursor, b.content_h)
-                    cursor = cursor + child._box.w
-                else
-                    layout.layout(child, b.content_x, b.content_y + cursor,
-                        b.content_w, b.content_h - cursor)
-                    cursor = cursor + child._box.h
+            if dir == "stack" then
+                for _, child in ipairs(self.children) do
+                    layout.layout(child, b.content_x, b.content_y, b.content_w, b.content_h)
+                end
+            else
+                for i, child in ipairs(self.children) do
+                    if i > 1 then cursor = cursor + gap end
+                    if dir == "row" then
+                        layout.layout(child, b.content_x + cursor, b.content_y,
+                            b.content_w - cursor, b.content_h)
+                        cursor = cursor + child._box.w
+                    else
+                        layout.layout(child, b.content_x, b.content_y + cursor,
+                            b.content_w, b.content_h - cursor)
+                        cursor = cursor + child._box.h
+                    end
                 end
             end
         end
