@@ -1,15 +1,18 @@
+---@class svglayout.builder
 local M = {}
 
----@class svglayout.BuilderContext
----@field width number
----@field height number
----@field x number
----@field y number
----@field add fun(self, node:table)
+---@class svglayout.BuilderContext Builder 回调执行上下文
+---@field width number 内容区宽度
+---@field height number 内容区高度
+---@field x number 内容区左上角 X 坐标
+---@field y number 内容区左上角 Y 坐标
+---@field add fun(self:svglayout.BuilderContext, node:table) 向 Builder 添加子节点
 
----Builder: 传入回调，回调内可使用声明式语法构建子节点
----@param props {build:fun(ctx:svglayout.BuilderContext):table|table[], style?:table}
----@return table
+---创建 Builder 动态内容生成组件
+---传入回调函数，回调在渲染阶段执行，可根据运行时上下文动态构建子节点
+---Builder 会在渲染时对其子节点重新布局，支持动态内容的尺寸自适应
+---@param props {build:fun(ctx:svglayout.BuilderContext):table|table[], style?:table} 组件属性
+---@return table Builder 节点对象
 function M.Builder(props)
     local components = require("svglayout.components")
     local layout = require("svglayout.layout")
@@ -20,7 +23,6 @@ function M.Builder(props)
 
     local original_render = node._render
     function node:_render(ctx)
-        -- 先构造子节点
         local b = self._box
         local collected = {}
         local bctx = {
@@ -39,10 +41,8 @@ function M.Builder(props)
             end
         end
         self.children = collected
-        -- 对新子节点做布局（以当前 content 区域为可用空间）
         local style = self.style or {}
         local pad = require("svglayout.style").normalize_spacing(style.padding)
-        -- 简化：重新对子节点布局
         local cursor = 0
         local dir = style.direction or "column"
         local gap = style.gap or 0

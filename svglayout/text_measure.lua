@@ -1,15 +1,17 @@
 ---@class svglayout.TextMeasure
 local M = {}
 
--- 默认字宽系数（相对 font_size）
--- 英文/数字：约 0.55；CJK：约 1.0；标点：约 0.3
+---默认字宽系数（相对 font_size）
+---英文/数字：约 0.55；CJK：约 1.0；标点：约 0.35
 local DEFAULT_ASCII = 0.55
 local DEFAULT_CJK   = 1.0
 local DEFAULT_PUNCT = 0.35
 
----判断 UTF-8 码点是否属于 CJK 范围
----@param cp integer
----@return boolean
+---判断 Unicode 码点是否属于 CJK 字符范围
+---覆盖汉字（CJK Unified Ideographs）、韩文（Hangul Syllables）、
+---兼容表意文字（CJK Compatibility Ideographs）和全角标点（Fullwidth Forms）区域
+---@param cp integer Unicode 码点
+---@return boolean 如果码点属于 CJK 范围则返回 true
 local function is_cjk(cp)
     return (cp >= 0x3000 and cp <= 0x9FFF)
         or (cp >= 0xAC00 and cp <= 0xD7AF)
@@ -17,6 +19,7 @@ local function is_cjk(cp)
         or (cp >= 0xFF00 and cp <= 0xFFEF)
 end
 
+---常见 ASCII 标点符号查找表，用于宽度估算
 local ASCII_PUNCT = {
     [string.byte(",")] = true, [string.byte(".")] = true,
     [string.byte(";")] = true, [string.byte(":")] = true,
@@ -24,8 +27,10 @@ local ASCII_PUNCT = {
     [string.byte("'")] = true, [string.byte('"')] = true,
 }
 
----UTF-8 解码迭代器：返回 (码点, 字符, 字节起, 字节止)
----@param s string
+---UTF-8 解码迭代器：依次返回字符串中每个字符的码点、字符子串、字节起止位置
+---支持 1~4 字节的 UTF-8 编码序列
+---@param s string 要迭代的 UTF-8 字符串
+---@return fun(): integer?, string?, integer?, integer? 迭代器函数，每次调用返回 (码点, 字符, 字节起始位置, 字节结束位置)
 function M.utf8_iter(s)
     local i = 1
     local len = #s
@@ -34,7 +39,7 @@ function M.utf8_iter(s)
         local b = string.byte(s, i)
         local bytes
         if b < 0x80 then bytes = 1
-        elseif b < 0xC0 then bytes = 1  -- 非法起始，按1字节跳过
+        elseif b < 0xC0 then bytes = 1
         elseif b < 0xE0 then bytes = 2
         elseif b < 0xF0 then bytes = 3
         else bytes = 4 end
@@ -47,20 +52,24 @@ function M.utf8_iter(s)
     end
 end
 
----估算单个字符宽度（倍率 × font_size）
----@param cp integer
----@param font_size number
----@return number
+---估算单个字符的宽度（倍率 × font_size）
+---CJK 字符按 1.0 倍率，ASCII 标点按 0.35 倍率，其他按 0.55 倍率
+---@param cp integer Unicode 码点
+---@param font_size number 字体大小（像素）
+---@return number 预估字符宽度（像素）
+---@nodiscard
 function M.char_width(cp, font_size)
     if is_cjk(cp) then return font_size * DEFAULT_CJK end
     if cp < 128 and ASCII_PUNCT[cp] then return font_size * DEFAULT_PUNCT end
     return font_size * DEFAULT_ASCII
 end
 
----估算整行文本宽度
----@param text string
----@param font_size number
----@return number
+---估算整行文本的总宽度
+---遍历所有字符累加宽度，不处理换行符
+---@param text string 要测量的文本字符串
+---@param font_size number 字体大小（像素）
+---@return number 预估文本总宽度（像素）
+---@nodiscard
 function M.text_width(text, font_size)
     local w = 0
     for cp in M.utf8_iter(text) do
@@ -69,21 +78,23 @@ function M.text_width(text, font_size)
     return w
 end
 
----根据最大宽度换行，返回行数组
----CJK 按字拆分；英文按空格拆分（单词过长则强制截断）
----@param text string
----@param max_width number
----@param font_size number
----@return string[]
+---根据最大宽度对文本进行换行，返回行数组
+---处理策略：
+--- - CJK 字符：逐字拆分，超过宽度时换行
+--- - 英文单词：按空格拆分，单词超长时强制截断
+--- - 显式换行符（`\n`）：直接分段
+---@param text string 要换行的文本
+---@param max_width number 最大行宽（像素）
+---@param font_size number 字体大小（像素）
+---@return string[] 换行后的行数组，每行一个字符串
+---@nodiscard
 function M.wrap(text, max_width, font_size)
     if max_width <= 0 then return { text } end
     local lines = {}
-    -- 按显式换行符先拆
     for paragraph in (text .. "\n"):gmatch("([^\n]*)\n") do
         if paragraph == "" then
             lines[#lines + 1] = ""
         else
-            -- 逐字符组合
             local line = ""
             local line_w = 0
             local word = ""
@@ -128,9 +139,7 @@ function M.wrap(text, max_width, font_size)
                         end
                     end
                 else
-                    -- 单词内字符
                     if word_w + cw > max_width then
-                        -- 单词超宽，强制断开
                         if line ~= "" then
                             lines[#lines + 1] = line
                             line = ""; line_w = 0

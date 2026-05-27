@@ -1,153 +1,43 @@
-# SVG 布局库示例
+# 示例说明
 
-本目录包含 SVG 布局库的完整示例代码，从基础到高级功能全面覆盖。
+## 运行
 
-## 📁 示例文件说明
-
-### 基础示例
-| 文件 | 说明 | 主要功能 |
-|------|------|----------|
-| `1.lua` | **综合基础示例** | 基础布局、Builder组件、自定义组件、分页、Raw SVG嵌入 |
-| `2.lua` | **渐变与文本示例** | 线性/径向渐变、图案填充、图片组件、多行文本分页 |
-| `3.lua` | **阴影与模糊效果** | 阴影效果、模糊效果、组合视觉效果 |
-| `4.lua` | **弹性布局进阶** | flex权重、auto尺寸、fill填充布局 |
-
-### 高级示例
-| 文件 | 说明 | 主要功能 |
-|------|------|----------|
-| `5.lua` | **综合高级示例** | Path/Line组件、Group变换、复杂仪表板、自定义拆分协议、性能测试 |
-| `6.lua` | **功能分类示例** | 按功能模块组织的示例，可选择性运行 |
-
-## 🚀 如何运行示例
-
-### 方法1：直接运行（推荐）
 ```bash
 cd example
-lua 1.lua  # 运行第一个示例
+lua demo.lua
 ```
 
-### 方法2：选择性运行
-```bash
-cd example
-lua 6.lua  # 运行功能分类示例，可选择具体功能
-```
+输出文件位于 `output/` 目录。
 
-### 方法3：批量运行
-```bash
-cd example
-for i in {1..6}; do lua $i.lua; done
-```
+## 示例概览
 
-## 📊 示例功能覆盖
+综合示例 [demo.lua](demo.lua) 按功能分类演示了库的所有特性，并包含性能基准测试。
 
-### ✅ 已覆盖的功能
-1. **基础组件**
-   - Box 容器
-   - Text 单行文本
-   - TextBlock 多行文本
-   - Rect 矩形
-   - Circle 圆形
-   - Line 线条
-   - Path 路径
-   - Group 组
-   - Image 图片
-   - Raw 原始SVG
+| 输出文件 | 功能覆盖 |
+|----------|----------|
+| `1_basic_components.svg` | 基础组件：Box、Text、TextBlock、Rect、Circle、Line、Path |
+| `2_containers.svg` | 进阶容器：Row、Column、ZStack、Spacer、Divider、Group、Image、Raw |
+| `3_effects.svg` | 视觉特效：shadow、blur、opacity、transform、clip |
+| `4_layout.svg` | 布局系统：justify 五种模式、align 四种模式、flex 权重、fill、百分比 |
+| `5_style_api.svg` | 链式 Style API：`svg.Style()` 的完整用法 |
+| `6_gradients.svg` | 渐变与图案：LinearGradient、RadialGradient、Pattern |
+| `7_builder.svg` | Builder 动态内容 + `svg.define()` 自定义组件 |
+| `8_text.svg` | 文本系统：Text 单行、TextBlock 多行换行、CJK 混合文本 |
+| `9_page_*.svg` | 分页系统：30 项列表按 A4 尺寸分页 |
+| `10_dashboard.svg` | 综合复杂场景：表单卡片 + 数据面板 + Builder 动态列表 |
 
-2. **布局系统**
-   - 弹性布局 (Flexbox)
-   - 盒模型 (padding/margin/border)
-   - 尺寸单位 (px, %, auto, fill)
-   - 对齐方式 (justify/align)
+## 性能测试
 
-3. **视觉效果**
-   - 阴影效果 (shadow)
-   - 模糊效果 (blur)
-   - 透明度 (opacity)
-   - 渐变填充 (LinearGradient/RadialGradient)
-   - 图案填充 (Pattern)
-   - 边框圆角 (border_radius)
+示例运行时会自动执行以下性能测试，输出耗时信息：
 
-4. **高级功能**
-   - Builder 动态组件
-   - 自定义组件 (define/register)
-   - 自动分页 (render_pages)
-   - 自定义拆分协议 (_split方法)
-   - 性能优化示例
-
-5. **实际应用**
-   - 数据仪表板
-   - 进度条组件
-   - 提示框组件
-   - 图表组件
-   - 任务列表
-
-## 🎯 学习路径建议
-
-### 初学者
-1. 从 `1.lua` 开始，了解基础用法
-2. 查看 `3.lua` 学习视觉效果
-3. 运行 `4.lua` 掌握弹性布局
-
-### 进阶用户
-1. 学习 `2.lua` 中的渐变和图案
-2. 查看 `5.lua` 中的高级组件
-3. 研究 `6.lua` 中的功能分类
-
-### 开发者
-1. 分析 `5.lua` 中的自定义拆分协议
-2. 学习性能优化技巧
-3. 参考实际应用场景实现
-
-## 📝 示例输出
-
-所有示例生成的 SVG 文件将保存在 `../output/` 目录中，文件名格式为：
-- `{示例编号}-{字母}.svg` - 单个文件输出
-- `{示例编号}-{字母}_page_{页码}.svg` - 分页输出
-
-## 🔧 自定义示例
-
-您可以根据现有示例创建自己的应用：
-
-```lua
--- 基于现有示例修改
-local MyApp = svg.define(function(props)
-    -- 参考 5.lua 中的 DashboardCard 组件
-    -- 参考 6.lua 中的 Alert 组件
-end)
-
--- 组合使用
-local my_doc = svg.Box {
-    style = { ... },
-    children = {
-        MyApp { ... },
-        -- 其他组件
-    },
-}
-```
-
-## ❓ 常见问题
-
-### Q: 示例运行失败？
-A: 确保：
-1. Lua 5.4 已安装
-2. `svglayout` 目录在 Lua 路径中
-3. 当前目录为 `example/`
-
-### Q: 如何查看生成的 SVG？
-A: 使用浏览器打开 `output/` 目录中的 `.svg` 文件
-
-### Q: 如何修改示例？
-A: 直接编辑 `.lua` 文件，调整参数和样式
-
-### Q: 需要更多示例？
-A: 参考现有示例的组合使用，或查看库的 API 文档
-
-## 📚 相关资源
-
-- [主 README.md](../README.md) - 库的完整文档
-- [API 文档](../README.md#核心-api) - 详细的 API 说明
-- [样式属性](../README.md#样式属性) - 所有可用的样式属性
-
----
-
-**提示**: 运行示例前，请确保已正确安装 Lua 和配置好路径。所有示例都是独立的，可以直接运行测试。
+| 测试内容 | 规模 |
+|----------|------|
+| 简单渲染 | 单次 |
+| 大量组件 | 1000 Box × 3 子组件 = 3000 节点 |
+| 分页渲染 | 1000 项列表 |
+| 文本测量 | 500 句 CJK 文本 |
+| 文本换行 | 500 句 CJK 文本 |
+| 渐变 + 阴影 | 200 个卡片 |
+| ZStack + 变换 | 100 个旋转元素 |
+| Builder 动态渲染 | 500 行 |
+| 综合页面分页 | 复杂仪表盘 |

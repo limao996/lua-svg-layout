@@ -1,6 +1,28 @@
+---@class svglayout.layout
+local M = {}
+
 local style_util = require("svglayout.style")
 
-local M = {}
+---@alias LayoutDirection '"row"'|'"column"'|'"stack"' 布局主轴方向
+---@alias JustifyMode '"start"'|'"center"'|'"end"'|'"space-between"'|'"space-around"' 主轴对齐模式
+---@alias AlignMode '"start"'|'"center"'|'"end"'|'"stretch"' 交叉轴对齐模式
+---@alias SizeMode '"fixed"'|'"auto"'|'"fill"' 尺寸解析模式
+
+---@class LayoutBox 布局完成后节点拥有的盒子几何信息
+---@field x number 盒子左上角 X 坐标（已包含父容器偏移）
+---@field y number 盒子左上角 Y 坐标（已包含父容器偏移）
+---@field w number 盒子总宽度（含 padding）
+---@field h number 盒子总高度（含 padding）
+---@field content_x number 内容区左上角 X 坐标
+---@field content_y number 内容区左上角 Y 坐标
+---@field content_w number 内容区宽度（不含 padding）
+---@field content_h number 内容区高度（不含 padding）
+
+---@class IntrinsicSize Measure 阶段计算的自然尺寸
+---@field w number 自然宽度（含 padding）
+---@field h number 自然高度（含 padding）
+---@field content_w? number 自然内容区宽度（不含 padding）
+---@field content_h? number 自然内容区高度（不含 padding）
 
 -- =======================================================================
 -- 阶段 1：MEASURE —— 计算 intrinsic（自然尺寸）
@@ -8,16 +30,17 @@ local M = {}
 -- hint_w / hint_h 是父容器给的"建议可用宽高"（用于换行等），nil 表示不限
 -- =======================================================================
 
----@param node table
----@param hint_w number|nil
----@param hint_h number|nil
----@return number intrinsic_w
----@return number intrinsic_h
+---测量节点的自然尺寸（intrinsic size）
+---递归计算子节点尺寸，支持固定尺寸、百分比、auto 以及 flex 加权分配前的基础尺寸
+---@param node table 要测量的节点对象
+---@param hint_w? number 父容器建议的可用宽度，nil 表示不限
+---@param hint_h? number 父容器建议的可用高度，nil 表示不限
+---@return number intrinsic_w 节点自然宽度（含 padding）
+---@return number intrinsic_h 节点自然高度（含 padding）
 function M.measure(node, hint_w, hint_h)
     local s = node.style or {}
     local pad = style_util.normalize_spacing(s.padding)
 
-    -- 尝试把 style 里的显式尺寸也参与决策
     local fixed_w = nil
     local fixed_h = nil
     if type(s.width) == "number" then fixed_w = s.width
@@ -33,9 +56,7 @@ function M.measure(node, hint_w, hint_h)
         if not pct and tonumber(s.height) then fixed_h = tonumber(s.height) end
     end
 
-    -- 节点可自定义度量（Text / TextBlock / Image 等叶子组件）
     if node._measure then
-        -- 把父给的 hint 扣掉 padding 传给节点内容
         local content_hint_w = (fixed_w or hint_w)
         if content_hint_w then content_hint_w = content_hint_w - pad[2] - pad[4] end
         local cw, ch = node:_measure(content_hint_w, hint_h)
@@ -45,7 +66,6 @@ function M.measure(node, hint_w, hint_h)
         return iw, ih
     end
 
-    -- 无子节点：仅 padding
     local children = node.children or {}
     if #children == 0 then
         local iw = fixed_w or (pad[2] + pad[4])
@@ -54,7 +74,6 @@ function M.measure(node, hint_w, hint_h)
         return iw, ih
     end
 
-    -- 有子节点：按方向聚合
     local dir = s.direction or "column"
     local gap = s.gap or 0
 
@@ -67,7 +86,7 @@ function M.measure(node, hint_w, hint_h)
     local cross_max = 0
     local max_w = 0
     local max_h = 0
-    
+
     for i, child in ipairs(children) do
         local cw, ch
         if dir == "row" then
@@ -84,7 +103,7 @@ function M.measure(node, hint_w, hint_h)
             if cw > cross_max then cross_max = cw end
             if cw > max_w then max_w = cw end
             if ch > max_h then max_h = ch end
-        else -- stack方向
+        else
             cw, ch = M.measure(child, child_hint_w, child_hint_h)
             if cw > max_w then max_w = cw end
             if ch > max_h then max_h = ch end
@@ -98,7 +117,7 @@ function M.measure(node, hint_w, hint_h)
     elseif dir == "column" then
         content_w = cross_max
         content_h = main_total
-    else -- stack方向
+    else
         content_w = max_w
         content_h = max_h
     end
@@ -115,12 +134,14 @@ end
 -- =======================================================================
 
 ---分配主轴尺寸给一组子节点
----@param children table[]
----@param dir "row"|"column"|"stack"
----@param content_main number
----@param content_cross number
----@param gap number
----@return number[] 每个子节点分配到的主轴尺寸
+---根据 flex 权重、固定尺寸和 auto 模式分配主轴上的空间
+---@param children table[] 子节点数组
+---@param dir LayoutDirection 布局方向
+---@param content_main number 内容区主轴总尺寸
+---@param content_cross number 内容区交叉轴总尺寸
+---@param gap number 子节点间距
+---@return number[] 每个子节点分配到的主轴尺寸数值
+---@return string[] 每个子节点的分配模式
 local function distribute_main(children, dir, content_main, content_cross, gap)
     local n = #children
     local total_gap = gap * math.max(n - 1, 0)
@@ -135,12 +156,11 @@ local function distribute_main(children, dir, content_main, content_cross, gap)
         local raw = (dir == "row") and cs.width or cs.height
         local val, mode = style_util.resolve_size(raw, content_main)
         local flex = cs.flex
-        
-        -- 在stack方向中，flex和fill应该被忽略，因为所有子组件都重叠
+
         if dir == "stack" then
             flex = nil
             if mode == "fill" then mode = "auto" end
-        elseif flex and flex > 0 then
+        elseif type(flex) == "number" and flex > 0 then
             mode = "flex"
         elseif mode == "fill" then
             mode = "flex"; flex = 1
@@ -154,9 +174,8 @@ local function distribute_main(children, dir, content_main, content_cross, gap)
             fixed_sum = fixed_sum + val
         elseif mode == "flex" then
             flex_sum = flex_sum + (flex or 1)
-            sizes[i] = 0  -- 后面分配
+            sizes[i] = 0
         else
-            -- auto：使用 intrinsic 主轴
             local iw, ih = M.measure(child,
                 (dir == "row") and nil or content_cross,
                 (dir == "row") and content_cross or nil)
@@ -175,18 +194,24 @@ local function distribute_main(children, dir, content_main, content_cross, gap)
             end
         end
     end
-    
-    -- 在stack方向中，所有子组件都获得content_main的尺寸
+
     if dir == "stack" then
         for i = 1, n do
             sizes[i] = content_main
         end
     end
-    
+
     return sizes, modes
 end
 
----计算交叉轴尺寸
+---计算子节点在交叉轴上的尺寸
+---根据子节点样式声明和交叉轴对齐模式决定最终交叉轴尺寸
+---@param child table 子节点
+---@param dir LayoutDirection 布局方向
+---@param content_cross number 内容区交叉轴总尺寸
+---@param align AlignMode 交叉轴对齐模式
+---@param main_size number 子节点已分配的主轴尺寸
+---@return number 子节点在交叉轴上的最终尺寸
 local function resolve_cross(child, dir, content_cross, align, main_size)
     local cs = child.style or {}
     local raw
@@ -194,14 +219,13 @@ local function resolve_cross(child, dir, content_cross, align, main_size)
         raw = cs.height
     elseif dir == "column" then
         raw = cs.width
-    else -- stack方向
-        raw = cs.height  -- 对于stack，我们使用height作为交叉轴
+    else
+        raw = cs.height
     end
-    
+
     local val, mode = style_util.resolve_size(raw, content_cross)
     if mode == "fixed" then return val end
     if mode == "fill" then return content_cross end
-    -- auto
     if align == "stretch" then
         return content_cross
     end
@@ -213,19 +237,21 @@ local function resolve_cross(child, dir, content_cross, align, main_size)
         cross = ih
     elseif dir == "column" then
         cross = iw
-    else -- stack方向
-        cross = content_cross  -- 对于stack，交叉轴尺寸就是content_cross
+    else
+        cross = content_cross
     end
     if cross > content_cross then cross = content_cross end
     return cross
 end
 
----以固定的外部尺寸布局节点（内部决定自身 content 区 + 递归子节点）
----@param node table
----@param x number
----@param y number
----@param w number
----@param h number
+---以固定的外部尺寸对节点进行精确布局
+---计算节点自身的 content 区坐标，然后递归放置所有子节点
+---@param node table 节点对象
+---@param x number 盒子左上角绝对 X 坐标
+---@param y number 盒子左上角绝对 Y 坐标
+---@param w number 盒子宽度
+---@param h number 盒子高度
+---@return LayoutBox 布局完成的盒子几何信息
 function M.layout_fixed(node, x, y, w, h)
     local style = node.style or {}
     local pad = style_util.normalize_spacing(style.padding)
@@ -252,7 +278,7 @@ function M.layout_fixed(node, x, y, w, h)
     elseif dir == "column" then
         content_main = node._box.content_h
         content_cross = node._box.content_w
-    else -- stack方向
+    else
         content_main = node._box.content_w
         content_cross = node._box.content_h
     end
@@ -260,7 +286,6 @@ function M.layout_fixed(node, x, y, w, h)
     local main_sizes = distribute_main(children, dir, content_main, content_cross, gap)
 
     if dir == "stack" then
-        -- stack方向：所有子组件重叠放置
         for i, child in ipairs(children) do
             local main_sz = main_sizes[i]
             local cross_sz = resolve_cross(child, dir, content_cross, align, main_sz)
@@ -271,17 +296,14 @@ function M.layout_fixed(node, x, y, w, h)
                 cross_offset = content_cross - cross_sz
             end
 
-            -- 对于stack方向，所有子组件都放在相同位置
             local cx = node._box.content_x
             local cy = node._box.content_y
             local cw = main_sz
             local ch = cross_sz
-            
+
             M.layout_fixed(child, cx, cy, cw, ch)
         end
     else
-        -- row/column方向：原有逻辑
-        -- justify 偏移
         local used = 0
         for i, sz in ipairs(main_sizes) do
             used = used + sz
@@ -332,13 +354,14 @@ function M.layout_fixed(node, x, y, w, h)
     return node._box
 end
 
----入口：对节点进行布局
----在给定可用区域内决定节点自身尺寸，然后调用 layout_fixed
----@param node table
----@param avail_x number
----@param avail_y number
----@param avail_w number
----@param avail_h number
+---布局入口：在给定可用区域内决定节点自身尺寸，然后调用 layout_fixed
+---自动处理 margin、百分比尺寸和 auto 回退逻辑
+---@param node table 节点对象
+---@param avail_x number 可用区域左上角 X 坐标
+---@param avail_y number 可用区域左上角 Y 坐标
+---@param avail_w number 可用区域宽度
+---@param avail_h number 可用区域高度
+---@return LayoutBox 布局完成的盒子几何信息
 function M.layout(node, avail_x, avail_y, avail_w, avail_h)
     local style = node.style or {}
     local margin = style_util.normalize_spacing(style.margin)
@@ -356,7 +379,6 @@ function M.layout(node, avail_x, avail_y, avail_w, avail_h)
     elseif wmode == "fill" then
         box_w = outer_w
     else
-        -- auto：measure
         local iw = M.measure(node, outer_w, outer_h)
         box_w = math.min(iw, outer_w)
     end
@@ -374,7 +396,11 @@ function M.layout(node, avail_x, avail_y, avail_w, avail_h)
     return node._box
 end
 
----兼容旧 API（给 paginate 用）
+---平移整个子树的所有盒子坐标
+---递归遍历节点及其所有子节点，将所有 _box 坐标偏移指定量
+---@param node table 节点对象
+---@param dx number X 方向偏移量
+---@param dy number Y 方向偏移量
 function M.translate(node, dx, dy)
     if dx == 0 and dy == 0 then return end
     if node._box then
