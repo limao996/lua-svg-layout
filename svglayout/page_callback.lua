@@ -1,16 +1,16 @@
 ---@class svglayout.page_callback
 local M = {}
 
+local components = require("svglayout.components")
+local layout = require("svglayout.layout")
+local style_util = require("svglayout.style")
+
 ---创建 PageCallback 动态页码组件
 ---接收 build(page, total) 回调，在分页渲染时根据当前页码动态生成子节点
 ---常用于页码显示、页眉页脚等需要感知页码的场景
 ---@param props? {build:fun(page:number, total:number):table|table[], style:table?}
 ---@return table PageCallback 节点
 function M.PageCallback(props)
-    local components = require("svglayout.components")
-    local layout = require("svglayout.layout")
-    local style_util = require("svglayout.style")
-
     props = props or {}
     local build_fn = props.build
     assert(type(build_fn) == "function", "PageCallback requires a build function")

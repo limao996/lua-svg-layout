@@ -11,6 +11,7 @@ local defs_mod      = require("svglayout.defs")
 local style_mod     = require("svglayout.style_modifier")
 local page_callback = require("svglayout.page_callback")
 local page_number   = require("svglayout.page_number")
+local variable      = require("svglayout.variable")
 
 -- 导出所有组件
 M.Box               = components.Box
@@ -36,6 +37,13 @@ M.RadialGradient    = defs_mod.RadialGradient
 M.Pattern           = defs_mod.Pattern
 M.Style             = style_mod
 M.NinePatch         = require("svglayout.nine_patch")
+---创建 SVG 模板变量占位符
+ ---声明一个动态变量，最终输出的 SVG 文件中将以 {{name}} 格式呈现
+ ---@param name string 变量名称
+ ---@return svglayout.VarHandle
+ M.var               = variable.var
+ ---@type svglayout.VarHandle
+ M.VarHandle         = variable.VarHandle
 
 ---@class svglayout.RenderOptions 渲染选项
 ---@field width number? SVG 宽度（默认 800）

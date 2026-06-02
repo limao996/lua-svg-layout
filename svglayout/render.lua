@@ -15,8 +15,10 @@ local core = require("svglayout.core")
 ---@field color string? 颜色（默认 "#000000"）
 ---@field opacity number? 透明度（默认 0.35）
 
----解析 paint 值：字符串直接返回；定义对象（渐变/图案）注册 def 并返回 url(#id) 引用
----@param v any 颜色值或定义对象
+---解析 paint 值
+---字符串直接返回；定义对象（渐变/图案）注册 def 并返回 url(#id) 引用；
+---VarHandle 变量触发 __tostring 返回 {{name}} 占位符
+---@param v any 颜色值、定义对象或 VarHandle
 ---@param ctx table 渲染上下文
 ---@return string? SVG paint 值
 function M.resolve_paint(v, ctx)

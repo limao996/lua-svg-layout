@@ -1,6 +1,10 @@
 ---@class svglayout.builder
 local M = {}
 
+local components = require("svglayout.components")
+local layout = require("svglayout.layout")
+local style_util = require("svglayout.style")
+
 ---@class svglayout.BuilderContext Builder 回调执行上下文
 ---@field width number 内容区宽度
 ---@field height number 内容区高度
@@ -14,10 +18,6 @@ local M = {}
 ---@param props? {build:fun(ctx:svglayout.BuilderContext):table|table[], style:table?}
 ---@return table Builder 节点
 function M.Builder(props)
-    local components = require("svglayout.components")
-    local layout = require("svglayout.layout")
-    local style_util = require("svglayout.style")
-
     props = props or {}
     local node = components.Box({ style = props.style, children = {} })
     node.type = "builder"

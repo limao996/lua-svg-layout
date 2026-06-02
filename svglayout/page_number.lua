@@ -1,15 +1,15 @@
 ---@class svglayout.page_number
 local M = {}
 
+local components = require("svglayout.components")
+local layout = require("svglayout.layout")
+
 ---创建 PageNumber 模板页码组件
 ---基于模板字符串（支持 {page}、{total} 变量）渲染页码
 ---比 PageCallback 更简洁，适合纯文本页码显示
 ---@param props? {template:string?, style:table?, text_style:table?}
 ---@return table PageNumber 节点
 function M.PageNumber(props)
-    local components = require("svglayout.components")
-    local layout = require("svglayout.layout")
-
     props = props or {}
     local template = props.template or "{page} / {total}"
     local text_style = props.text_style or {}

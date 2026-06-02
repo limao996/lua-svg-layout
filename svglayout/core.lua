@@ -2,10 +2,13 @@
 local M = {}
 
 ---将字符串中的 XML 特殊字符转义为实体引用
----@param s string 原始字符串
+---支持 VarHandle 变量：自动通过 tostring 触发 __tostring 元方法，
+---输出 {{name}} 占位符，同时确保 XML 特殊字符被正确转义
+---@param s string|table 原始字符串或 VarHandle
 ---@return string 转义后的安全 XML 字符串
 ---@nodiscard
 function M.escape_xml(s)
+    s = tostring(s)
     return (s:gsub("[&<>\"']", {
         ["&"] = "&amp;", ["<"] = "&lt;", [">"] = "&gt;",
         ['"'] = "&quot;", ["'"] = "&apos;",
@@ -44,7 +47,7 @@ function M.attrs_to_str(attrs)
 end
 
 ---生成全局唯一 ID（内部维护递增计数器）
----@param prefix? string ID 前缀，默认 "id"
+---@param prefix string? ID 前缀，默认 "id"
 ---@return string 唯一 ID，如 "box42"
 ---@nodiscard
 local _id = 0

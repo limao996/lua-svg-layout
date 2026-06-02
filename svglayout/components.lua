@@ -6,6 +6,8 @@ local render = require("svglayout.render")
 local layout = require("svglayout.layout")
 local measure = require("svglayout.text_measure")
 local style_util = require("svglayout.style")
+local variable = require("svglayout.variable")
+local nine_patch = require("svglayout.nine_patch")
 
 ---@alias ComponentNode table 组件节点（含 style、children、_measure、_render 等字段）
 
@@ -124,11 +126,13 @@ end
 -- ============ Text（单行） ============
 
 ---@class svglayout.TextProps
----@field text string? 文本
+---@field text (string|svglayout.VarHandle)? 文本内容（支持 var() 变量）
 ---@field style table? 样式
 
 ---创建单行文本组件
 ---支持颜色、字体大小、水平对齐等样式控制
+---text 和 style 中的属性值支持使用 var() 声明动态变量，
+---最终 SVG 输出中以 {{name}} 格式呈现
 ---@param props? svglayout.TextProps
 ---@return ComponentNode
 function M.Text(props)
@@ -138,9 +142,10 @@ function M.Text(props)
 
     function node:_measure(hint_w, hint_h)
         local s = self.style
-        local fs = s.font_size or 14
-        local tw = measure.text_width(self.text, fs)
-        local th = fs * (s.line_height or 1.2)
+        local fs = variable.resolve_numeric(s.font_size, 14)
+        local txt = tostring(self.text)
+        local tw = measure.text_width(txt, fs)
+        local th = fs * variable.resolve_numeric(s.line_height, 1.2)
         return tw, th
     end
 
@@ -148,8 +153,9 @@ function M.Text(props)
         local b = self._box
         local s = self.style
         local fs = s.font_size or 14
+        local fs_calc = variable.resolve_numeric(s.font_size, 14)
         local anchor, tx = core.compute_text_alignment(s.text_align, b.content_x, b.content_w)
-        local ty = b.content_y + fs
+        local ty = b.content_y + fs_calc
         local attrs = {
             x = tx, y = ty,
             ["font-family"] = s.font_family or "sans-serif",
@@ -169,12 +175,14 @@ end
 -- ============ TextBlock（多行） ============
 
 ---@class svglayout.TextBlockProps 多行文本属性
----@field text string? 文本
+---@field text (string|svglayout.VarHandle)? 文本内容（支持 var() 变量）
 ---@field line_height number? 行高倍率（默认 1.4）
 ---@field style table? 样式
 
 ---创建多行文本组件
 ---支持自动换行和分页拆分；CJK 逐字换行，英文按空格换行
+---text 和 style 中的属性值支持使用 var() 声明动态变量，
+---最终 SVG 输出中以 {{name}} 格式呈现
 ---@param props? svglayout.TextBlockProps
 ---@return ComponentNode
 function M.TextBlock(props)
@@ -186,18 +194,20 @@ function M.TextBlock(props)
 
     -- 计算换行，结果缓存在 self._lines
     local function compute_lines(self, content_w)
-        local fs = self.style.font_size or 14
+        local fs = variable.resolve_numeric(self.style.font_size, 14)
+        local txt = tostring(self.text)
         if content_w and content_w > 0 then
-            self._lines = measure.wrap(self.text, content_w, fs)
+            self._lines = measure.wrap(txt, content_w, fs)
         else
-            self._lines = { self.text }
+            self._lines = { txt }
         end
         self._line_h = fs * self.line_height
         self._last_cw = content_w
     end
 
     function node:_measure(hint_w, hint_h)
-        local fs = self.style.font_size or 14
+        local fs = variable.resolve_numeric(self.style.font_size, 14)
+        local txt = tostring(self.text)
         if hint_w and hint_w > 0 then
             compute_lines(self, hint_w)
             local maxw = 0
@@ -207,7 +217,7 @@ function M.TextBlock(props)
             end
             return math.min(maxw, hint_w), #self._lines * self._line_h
         else
-            local w = measure.text_width(self.text, fs)
+            local w = measure.text_width(txt, fs)
             return w, fs * self.line_height
         end
     end
@@ -242,6 +252,7 @@ function M.TextBlock(props)
         local b = self._box
         local s = self.style
         local fs = s.font_size or 14
+        local fs_calc = variable.resolve_numeric(s.font_size, 14)
         if not self._lines or self._last_cw ~= b.content_w then
             compute_lines(self, b.content_w)
         end
@@ -253,7 +264,7 @@ function M.TextBlock(props)
             render.resolve_paint(s.color or s.fill, ctx) or "#000", anchor,
             s.font_weight and (' font-weight="' .. s.font_weight .. '"') or "") }
         for i, line in ipairs(self._lines) do
-            local ty = b.content_y + fs + (i - 1) * self._line_h
+            local ty = b.content_y + fs_calc + (i - 1) * self._line_h
             parts[#parts + 1] = string.format(
                 '<tspan x="%s" y="%s">%s</tspan>',
                 tx, ty, core.escape_xml(line))
@@ -276,9 +287,10 @@ local function shape_measure(self)
 end
 
 ---@class svglayout.RectProps
----@field style table? 支持 fill、stroke、stroke_width、border_radius
+---@field style table? 支持 fill、stroke、stroke_width、border_radius（属性值支持 var()）
 
 ---创建矩形组件，支持圆角和填充/描边
+---style 中的 fill、stroke、border_radius 等属性支持使用 var() 声明动态变量
 ---@param props? svglayout.RectProps
 ---@return ComponentNode
 function M.Rect(props)
@@ -302,9 +314,10 @@ end
 
 ---@class svglayout.CircleProps
 ---@field r number? 半径（仅未通过 style.width/height 设置时生效）
----@field style table?
+---@field style table? 支持 fill、stroke 等（属性值支持 var()）
 
 ---创建圆形组件
+---style 中的 fill、stroke 等属性支持使用 var() 声明动态变量
 ---@param props? svglayout.CircleProps
 ---@return ComponentNode
 function M.Circle(props)
@@ -443,7 +456,6 @@ function M.Image(props)
     local parsed_np = nil
 
     if type(np_config) == "table" then
-        local nine_patch = require("svglayout.nine_patch")
         if np_config.blocks then
             parsed_np = np_config
             parsed_np.href = parsed_np.href or props.href
@@ -457,7 +469,6 @@ function M.Image(props)
         local b = self._box
 
         if parsed_np then
-            local nine_patch = require("svglayout.nine_patch")
             local inner = nine_patch.render(ctx, parsed_np, b, props.nine_patch_repeat)
             local skip = (self.style.background == nil) and (self.style.border == nil)
             return render.render_box(self, inner, ctx, { skip_bg = skip })

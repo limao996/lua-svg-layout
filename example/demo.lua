@@ -904,15 +904,15 @@ local function img_card(href, w, h, label)
 end
 
 local function h2(text)
-    return svg.Text { text = text, style = svg.Style():font_size(16):font_weight("bold"):color("#2c3e50"):margin({20, 0, 2, 0}) }
+    return svg.Text { text = text, style = svg.Style():font_size(16):font_weight("bold"):color("#2c3e50"):margin({ 20, 0, 2, 0 }) }
 end
 
 local function p(text)
-    return svg.Text { text = text, style = svg.Style():font_size(12):color("#888"):margin({0, 0, 6, 0}) }
+    return svg.Text { text = text, style = svg.Style():font_size(12):color("#888"):margin({ 0, 0, 6, 0 }) }
 end
 
 local function row(...)
-    local children = {...}
+    local children = { ... }
     return svg.Box {
         style = svg.Style():direction("row"):flex(1):gap(12):background("#fff"):padding(16):border_radius(8):align("end"),
         children = children,
@@ -923,7 +923,7 @@ end
 local doc16 = svg.Box {
     style = svg.Style():width(1500):background("#f5f6fa"):padding(24):direction("column"):gap(0),
     children = {
-        svg.Text { text = "Nine-Patch (九宫格) 完整功能展示", style = svg.Style():font_size(22):font_weight("bold"):color("#2c3e50"):text_align("center"):margin({0, 0, 4, 0}) },
+        svg.Text { text = "Nine-Patch (九宫格) 完整功能展示", style = svg.Style():font_size(22):font_weight("bold"):color("#2c3e50"):text_align("center"):margin({ 0, 0, 4, 0 }) },
         svg.Divider { style = { margin = { 0, 0, 8, 0 } } },
 
         -- 素材源图展示
@@ -989,8 +989,71 @@ local doc16 = svg.Box {
 
 save("16_nine_patch_comprehensive.svg", svg.render_svg(doc16))
 
+-- ============================================================
+-- Step 17: 模板变量系统 — var()
+-- 展示 svg.var() 声明动态变量，最终 SVG 输出 {{name}} 占位符，
+-- 可供 Jinja2、Mustache 等外部模板引擎后续替换
+-- ============================================================
+step(17, "Template Variables — svg.var()")
+
+-- 基础变量：所有核心属性均使用 var() 声明
+-- 输出 SVG 中 width/height 保持固定值，background/text/font_size 变为 {{name}}
+-- 验证：变量不会影响布局测量，font_size 在测量阶段使用默认值 14
+local doc17a = svg.Box {
+    style = { width = 400, height = 200, background = svg.var("background") },
+    children = {
+        svg.Text {
+            text = svg.var("text"),
+            style = { height = 200, font_size = svg.var("font_size"), color = "#333", font_weight = "bold", text_align = "center" },
+        },
+    },
+}
+save("17a_template_variables.svg", svg.render_svg(doc17a))
+
+-- 混合使用：变量与固定值混合在同一个组件树中
+-- 固定值（如 #f5f5f5、22、#666）保持原样输出
+-- 变量如 title/title_color/description/button_bg 输出 {{name}}
+-- 验证：同一变量可在多处复用（button_bg 在两个 Rect 中使用）
+local doc17b = svg.Box {
+    style = { width = 500, padding = 20, direction = "column", gap = 12, background = "#f5f5f5" },
+    children = {
+        svg.Text {
+            text = svg.var("title"),
+            style = { font_size = 22, font_weight = "bold", color = svg.var("title_color"), text_align = "center" },
+        },
+        svg.TextBlock {
+            text = svg.var("description"),
+            style = { font_size = 14, color = "#666", line_height = 1.5, background = "#fff", padding = 12, border_radius = 6 },
+        },
+        svg.Box {
+            style = { direction = "row", gap = 10, height = 40 },
+            children = {
+                svg.Rect { style = { flex = 1, height = 40, fill = svg.var("button_bg"), border_radius = 6 } },
+                svg.Rect { style = { flex = 1, height = 40, fill = svg.var("button_bg"), border_radius = 6 } },
+            },
+        },
+    },
+}
+save("17b_mixed_variables.svg", svg.render_svg(doc17b))
+
+-- 形状组件中：Circle 的 fill、Rect 的 fill 和 border_radius 均可使用变量
+-- 固定值（"#e74c3c"）保持原样，变量输出 {{name}}
+-- 验证：border_radius 作为数值型变量也可正确输出 {{corner_radius}}
+local doc17c = svg.Box {
+    style = { width = 400, height = 150, direction = "row", gap = 20, align = "center", justify = "center", background = "#f8f9fa" },
+    children = {
+        svg.Circle { style = { width = 60, height = 60, fill = svg.var("circle_color") } },
+        svg.Rect { style = { width = 80, height = 50, fill = svg.var("rect_color"), border_radius = 8 } },
+        svg.Rect { style = { width = 80, height = 50, fill = "#e74c3c", border_radius = svg.var("corner_radius") } },
+    },
+}
+save("17c_shape_variables.svg", svg.render_svg(doc17c))
+
+print("  Template variable placeholders: {{variable_name}}")
+print("  Compatible with Jinja2, Mustache, Handlebars, dotLiquid, etc.")
+
 print("")
-print("All 16 steps completed successfully!")
+print("All 17 steps completed successfully!")
 print("Output files are in the output/ directory:")
 local handle = io.popen("dir ..\\output\\*.svg /b 2>nul")
 if handle then
