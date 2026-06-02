@@ -11,33 +11,23 @@ lua demo.lua
 
 ## 示例概览
 
-综合示例 [demo.lua](demo.lua) 按功能分类演示了库的所有特性，并包含性能基准测试。
+示例 [demo.lua](demo.lua) 按 16 个步骤覆盖了库的所有功能：
 
 | 输出文件 | 功能覆盖 |
 |----------|----------|
-| `1_basic_components.svg` | 基础组件：Box、Text、TextBlock、Rect、Circle、Line、Path |
-| `2_containers.svg` | 进阶容器：Row、Column、ZStack、Spacer、Divider、Group、Image、Raw |
-| `3_effects.svg` | 视觉特效：shadow、blur、opacity、transform、clip |
-| `4_layout.svg` | 布局系统：justify 五种模式、align 四种模式、flex 权重、fill、百分比 |
-| `5_style_api.svg` | 链式 Style API：`svg.Style()` 的完整用法 |
-| `6_gradients.svg` | 渐变与图案：LinearGradient、RadialGradient、Pattern |
-| `7_builder.svg` | Builder 动态内容 + `svg.define()` 自定义组件 |
-| `8_text.svg` | 文本系统：Text 单行、TextBlock 多行换行、CJK 混合文本 |
-| `9_page_*.svg` | 分页系统：30 项列表按 A4 尺寸分页 |
-| `10_dashboard.svg` | 综合复杂场景：表单卡片 + 数据面板 + Builder 动态列表 |
-
-## 性能测试
-
-示例运行时会自动执行以下性能测试，输出耗时信息：
-
-| 测试内容 | 规模 |
-|----------|------|
-| 简单渲染 | 单次 |
-| 大量组件 | 1000 Box × 3 子组件 = 3000 节点 |
-| 分页渲染 | 1000 项列表 |
-| 文本测量 | 500 句 CJK 文本 |
-| 文本换行 | 500 句 CJK 文本 |
-| 渐变 + 阴影 | 200 个卡片 |
-| ZStack + 变换 | 100 个旋转元素 |
-| Builder 动态渲染 | 500 行 |
-| 综合页面分页 | 复杂仪表盘 |
+| `01_hello_world.svg` | 基础 Hello World |
+| `02_styling_basics.svg` | 样式基础：背景、内边距、圆角、字体 |
+| `03_row_column.svg` | 布局方向：Row 水平、Column 垂直 |
+| `04_spacer_alignment.svg` | Spacer 弹性空白 + justify/align 对齐 |
+| `05_flex_fill.svg` | flex 权重、fill 填充、百分比宽度、margin |
+| `06_shapes.svg` | 形状组件：Rect、Circle、Line、Path |
+| `07_text_system.svg` | 文本系统：Text 单行、TextBlock 多行换行、CJK 混合 |
+| `08_dividers_zstack.svg` | Divider 分割线 + ZStack 层叠布局 |
+| `09_effects.svg` | 视觉效果：shadow、blur、opacity、rotate、clip |
+| `10_gradients_patterns.svg` | 渐变与图案：LinearGradient、RadialGradient、Pattern |
+| `11_style_api.svg` | 链式 Style API：`svg.Style()` |
+| `12_custom_components.svg` | 自定义组件：`svg.define()` + `svg.register()` |
+| `13_builder.svg` | Builder 动态内容生成 |
+| `14_page_*.svg` | 分页系统 + PageCallback + PageNumber |
+| `15_dashboard.svg` | 综合仪表盘：表单 + 数据面板 + Builder 动态列表 |
+| `16_nine_patch_comprehensive.svg` | 九宫格完整功能：拉伸、固定区、重复模式 |

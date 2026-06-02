@@ -2,14 +2,11 @@
 local M = {}
 
 ---规范化间距值为四元数组 [top, right, bottom, left]
----支持多种输入格式：
---- - `nil` → `{0, 0, 0, 0}`
---- - `number` → 四个方向相同
---- - `{top, right, bottom, left}` → 按顺序映射
---- - `{top, right}` → 上下 = top, 左右 = right
---- - `{top=t, right=r, bottom=b, left=l}` → 按命名键映射
+---输入格式：nil → {0,0,0,0}；数字 → 四方向相同；
+---{t,r,b,l} → 顺序映射；{t,r} → 上下=t，左右=r；
+---{top=t,right=r,bottom=b,left=l} → 命名键映射
 ---@param p? number|number[]|table 间距值
----@return number[4] 四元数组 [top, right, bottom, left]，索引从 1 开始
+---@return number[4] [top, right, bottom, left]
 ---@nodiscard
 function M.normalize_spacing(p)
     if p == nil then return { 0, 0, 0, 0 } end
@@ -19,11 +16,11 @@ function M.normalize_spacing(p)
     return { p.top or 0, p.right or 0, p.bottom or 0, p.left or 0 }
 end
 
----扩展样式表：合并基础样式和覆盖样式，返回新表而不修改原始表
+---合并两个样式表，返回新表（不修改原始表）
 ---@generic T: table
----@param base T 基础样式表
----@param override table 覆盖样式表，同名字段将覆盖 base 中的值
----@return T 合并后的新样式表
+---@param base T 基础样式
+---@param override table 覆盖样式
+---@return T 合并结果
 ---@nodiscard
 function M.extend(base, override)
     local r = {}
@@ -32,18 +29,12 @@ function M.extend(base, override)
     return r
 end
 
----解析尺寸声明为结构化模式
----支持的输入格式：
---- - `nil` → auto 模式
---- - `number` → fixed 模式，直接使用该数值
---- - `"auto"` → auto 模式，由子节点内容决定
---- - `"fill"` → fill 模式，填满父容器可用空间
---- - `"50%"` → fixed 模式，按父容器尺寸百分比计算
---- - `"100"` → fixed 模式，自动转换为数字
----@param v any 尺寸声明值
----@param parent? number 父容器对应方向的可用尺寸，nil 表示未知
----@return number? 数值结果；nil 表示需要后续布局阶段决策
----@return '"fixed"'|'"auto"'|'"fill"' 解析模式：fixed（固定值）、auto（自适应）、fill（填充）
+---解析尺寸声明值，返回数值和模式
+---支持：nil→auto；数字→fixed；"auto"→auto；"fill"→fill；"50%"→百分比 fixed；"100"→字符串转数字 fixed
+---@param v any 尺寸值
+---@param parent? number 父容器尺寸（百分比计算用）
+---@return number? 解析后的数值
+---@return '"fixed"'|'"auto"'|'"fill"' 解析模式
 ---@nodiscard
 function M.resolve_size(v, parent)
     if v == nil then return nil, "auto" end

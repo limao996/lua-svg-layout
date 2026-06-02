@@ -7,17 +7,17 @@ local layout = require("svglayout.layout")
 local measure = require("svglayout.text_measure")
 local style_util = require("svglayout.style")
 
----@alias ComponentNode table 组件节点对象，包含 style、children、_measure、_render 等字段
+---@alias ComponentNode table 组件节点（含 style、children、_measure、_render 等字段）
 
----@class svglayout.ComponentProps 通用组件属性
+---@class svglayout.ComponentProps 通用属性
 ---@field style? table 样式表
----@field children? table[] 子节点数组
+---@field children? table[] 子节点
 
 ---创建节点对象
----若 style 是 Style 实例（链式 API），会自动物化为纯样式表
----@param type string 节点类型标识
+---若 style 是 Style 实例，自动物化为纯样式表
+---@param type string 节点类型
 ---@param props table 属性表
----@return ComponentNode 节点对象
+---@return ComponentNode
 local function make_node(type, props)
     local style = props.style or {}
     local mt = getmetatable(style)
@@ -39,21 +39,15 @@ end
 
 -- ============ Box ============
 
----创建弹性容器组件，支持 Flexbox 布局
----根据 direction 属性支持 row（水平）、column（纵向）和 stack（重叠）三种布局模式
----纵向布局的 Box 且未显式声明高度时，自动获得可拆分能力（支持分页）
----@param props svglayout.ComponentProps 组件属性
----@return ComponentNode Box 节点对象
+---创建通用弹性容器组件
+---direction="column" 且未显式声明高度时自动获得分页拆分能力
+---@param props svglayout.ComponentProps
+---@return ComponentNode
 function M.Box(props)
     props = props or {}
     local node = make_node("box", props)
 
-    ---拆分 Box 的子节点用于分页
-    ---将子节点按可用高度拆分为"放入当前页"和"剩余"两部分
-    ---@param self table Box 节点自身
-    ---@param avail_h number 可用于放置子节点的垂直空间
-    ---@return ComponentNode? first 放入当前页的部分，nil 表示无法拆分
-    ---@return ComponentNode? rest 剩余部分，nil 表示已全部放入
+    -- 纵向 Box 的分页拆分逻辑
     local function box_split(self, avail_h)
         local b = self._box
         if not b or not b.content_w then return nil, self end
@@ -82,12 +76,8 @@ function M.Box(props)
                 if avail > 0 then
                     layout.layout_fixed(c, 0, 0, b.content_w, avail)
                     local first, rest = c:_split(avail)
-                    if first then
-                        table.insert(first_children, first)
-                    end
-                    if rest then
-                        table.insert(rest_children, rest)
-                    end
+                    if first then table.insert(first_children, first) end
+                    if rest then table.insert(rest_children, rest) end
                 else
                     table.insert(rest_children, c)
                 end
@@ -106,20 +96,15 @@ function M.Box(props)
 
         if #first_children == 0 then return nil, self end
 
-        local first = M.Box {
-            style = core.shallow_copy(s),
-            children = first_children,
-        }
+        local first = M.Box { style = core.shallow_copy(s), children = first_children }
         local rest = nil
         if #rest_children > 0 then
-            rest = M.Box {
-                style = core.shallow_copy(s),
-                children = rest_children,
-            }
+            rest = M.Box { style = core.shallow_copy(s), children = rest_children }
         end
         return first, rest
     end
 
+    -- 纵向无固定高度时启用分页
     local s = props.style or {}
     if (s.direction or "column") == "column" and type(s.height) ~= "number" and (props.children and #props.children > 0) then
         node._splittable = true
@@ -138,15 +123,14 @@ end
 
 -- ============ Text（单行） ============
 
----@class svglayout.TextProps 单行文本组件属性
----@field text? string 文本内容
----@field style? table 样式表
+---@class svglayout.TextProps
+---@field text? string 文本
+---@field style? table 样式
 
 ---创建单行文本组件
----支持字体大小、颜色、水平对齐等样式控制
----文本宽度通过估算方式计算（非精确字体度量）
----@param props svglayout.TextProps 组件属性
----@return ComponentNode Text 节点对象
+---支持颜色、字体大小、水平对齐等样式控制
+---@param props svglayout.TextProps
+---@return ComponentNode
 function M.Text(props)
     props = props or {}
     local node = make_node("text", props)
@@ -184,16 +168,15 @@ end
 
 -- ============ TextBlock（多行） ============
 
----@class svglayout.TextBlockProps 多行文本组件属性
----@field text? string 文本内容
----@field line_height? number 行高倍率，默认 1.4
----@field style? table 样式表
+---@class svglayout.TextBlockProps
+---@field text? string 文本
+---@field line_height? number 行高倍率（默认 1.4）
+---@field style? table 样式
 
 ---创建多行文本组件
----支持自动换行和分页拆分；换行策略区分 CJK 字符（逐字换行）和英文单词（按空格换行）
----文本宽度通过估算方式计算，适合 CJK 和混合文本场景
----@param props svglayout.TextBlockProps 组件属性
----@return ComponentNode TextBlock 节点对象
+---支持自动换行和分页拆分；CJK 逐字换行，英文按空格换行
+---@param props svglayout.TextBlockProps
+---@return ComponentNode
 function M.TextBlock(props)
     props = props or {}
     local node = make_node("text_block", props)
@@ -201,10 +184,7 @@ function M.TextBlock(props)
     node.line_height = props.line_height or 1.4
     node._splittable = true
 
-    ---计算文本行，根据内容宽度进行换行
-    ---结果缓存在 self._lines 中，同时记录 last_cw 以检测宽度变化
-    ---@param self table 节点自身
-    ---@param content_w number 内容区宽度
+    -- 计算换行，结果缓存在 self._lines
     local function compute_lines(self, content_w)
         local fs = self.style.font_size or 14
         if content_w and content_w > 0 then
@@ -232,12 +212,7 @@ function M.TextBlock(props)
         end
     end
 
-    ---拆分 TextBlock 用于分页
-    ---按行拆分：计算可用高度能容纳的行数，将文本分为"当前页"和"剩余"两部分
-    ---@param self table 节点自身
-    ---@param avail_h number 可用于放置文本的垂直空间
-    ---@return ComponentNode? first 放入当前页的部分
-    ---@return ComponentNode? rest 剩余部分
+    -- 按行拆分文本用于分页
     function node:_split(avail_h)
         local b = self._box
         if not self._lines or self._last_cw ~= b.content_w then
@@ -292,11 +267,7 @@ end
 
 -- ============ Rect / Circle / Line / Path ============
 
----形状组件的默认测量函数
----若未声明尺寸，intrinsic 返回 0（由父容器的 align=stretch 或 fill 决定最终尺寸）
----@param self table 形状节点自身
----@return number width 形状自然宽度
----@return number height 形状自然高度
+-- 形状组件的默认测量：返回固定尺寸或 0
 local function shape_measure(self)
     local s = self.style
     local w = type(s.width) == "number" and s.width or 0
@@ -304,13 +275,12 @@ local function shape_measure(self)
     return w, h
 end
 
----@class svglayout.RectProps 矩形组件属性
----@field style? table 样式表，支持 fill、stroke、stroke_width、border_radius 等
+---@class svglayout.RectProps
+---@field style? table 支持 fill、stroke、stroke_width、border_radius
 
----创建矩形组件
----支持圆角（border_radius）、填充（fill）和描边（stroke）样式
----@param props svglayout.RectProps 组件属性
----@return ComponentNode Rect 节点对象
+---创建矩形组件，支持圆角和填充/描边
+---@param props svglayout.RectProps
+---@return ComponentNode
 function M.Rect(props)
     props = props or {}
     local node = make_node("rect", props)
@@ -330,14 +300,13 @@ function M.Rect(props)
     return node
 end
 
----@class svglayout.CircleProps 圆形组件属性
----@field r? number 圆的半径（仅在未通过 style.width/height 设置尺寸时生效）
----@field style? table 样式表，支持 fill、stroke、stroke_width 等
+---@class svglayout.CircleProps
+---@field r? number 半径（仅未通过 style.width/height 设置时生效）
+---@field style? table
 
 ---创建圆形组件
----支持通过 style.width/height 或 props.r 控制圆形直径
----@param props svglayout.CircleProps 组件属性
----@return ComponentNode Circle 节点对象
+---@param props svglayout.CircleProps
+---@return ComponentNode
 function M.Circle(props)
     props = props or {}
     local node = make_node("circle", props)
@@ -364,17 +333,16 @@ function M.Circle(props)
     return node
 end
 
----@class svglayout.LineProps 线条组件属性
----@field x1? number 起点 X 坐标，默认使用盒子左边界
----@field y1? number 起点 Y 坐标，默认使用盒子上边界
----@field x2? number 终点 X 坐标，默认使用盒子右边界
----@field y2? number 终点 Y 坐标，默认使用盒子下边界
----@field style? table 样式表，支持 stroke、stroke_width 等
+---@class svglayout.LineProps
+---@field x1? number 起点 X（默认左边界）
+---@field y1? number 起点 Y（默认上边界）
+---@field x2? number 终点 X（默认右边界）
+---@field y2? number 终点 Y（默认下边界）
+---@field style? table
 
 ---创建线条组件
----通过 x1/y1/x2/y2 指定起点和终点坐标，未指定时使用盒子边界
----@param props svglayout.LineProps 组件属性
----@return ComponentNode Line 节点对象
+---@param props svglayout.LineProps
+---@return ComponentNode
 function M.Line(props)
     props = props or {}
     local node = make_node("line", props)
@@ -393,14 +361,13 @@ function M.Line(props)
     return node
 end
 
----@class svglayout.PathProps 路径组件属性
----@field d string SVG path 数据（如 "M10 10 L20 20"）
----@field style? table 样式表，支持 fill、stroke、stroke_width 等
+---@class svglayout.PathProps
+---@field d string SVG path 数据
+---@field style? table
 
----创建路径组件
----支持 SVG path 数据字符串和完整的填充/描边样式控制
----@param props svglayout.PathProps 组件属性
----@return ComponentNode Path 节点对象
+---创建 SVG 路径组件
+---@param props svglayout.PathProps
+---@return ComponentNode
 function M.Path(props)
     props = props or {}
     local node = make_node("path", props)
@@ -421,14 +388,10 @@ end
 
 -- ============ Group ============
 
----@class svglayout.GroupProps 组组件属性
----@field style? table 样式表
----@field children? table[] 子节点数组
-
----创建 SVG 组件组
----用于将多个元素组合为一个逻辑单元，统一应用变换、透明度等效果
----@param props svglayout.GroupProps 组件属性
----@return ComponentNode Group 节点对象
+---创建 SVG 组组件
+---用于将多个元素组合，统一应用变换、透明度等效果
+---@param props svglayout.ComponentProps
+---@return ComponentNode
 function M.Group(props)
     props = props or {}
     local node = make_node("group", props)
@@ -444,14 +407,9 @@ end
 
 -- ============ Raw ============
 
----@class svglayout.RawProps 原始 SVG 组件属性
----@field svg? string 原始 SVG 代码字符串
----@field style? table 样式表
-
----创建原始 SVG 组件
----直接嵌入任意 SVG 代码，不进行任何处理或转义
----@param props svglayout.RawProps 组件属性
----@return ComponentNode Raw 节点对象
+---创建原始 SVG 组件（直接嵌入任意 SVG 代码）
+---@param props {svg?:string, style?:table}
+---@return ComponentNode
 function M.Raw(props)
     props = props or {}
     local node = make_node("raw", props)
@@ -466,21 +424,45 @@ end
 
 -- ============ Image ============
 
----@class svglayout.ImageProps 图像组件属性
----@field href? string 图像 URL 或路径
----@field preserve_aspect_ratio? string SVG preserveAspectRatio 属性，默认 "xMidYMid meet"
----@field style? table 样式表
+---@class svglayout.ImageProps
+---@field href? string 图片 URL
+---@field preserve_aspect_ratio? string SVG preserveAspectRatio（默认 "xMidYMid meet"）
+---@field nine_patch? svglayout.NinePatchConfig|boolean 九宫格配置
+---@field nine_patch_repeat? table<string,string> 逐块重复模式覆盖
+---@field style? table
 
----创建图像组件
----使用 SVG `<image>` 标签嵌入外部图片，支持宽高比控制
----@param props svglayout.ImageProps 组件属性
----@return ComponentNode Image 节点对象
+---创建图像组件，支持普通嵌入和九宫格渲染
+---@param props svglayout.ImageProps
+---@return ComponentNode
 function M.Image(props)
     props = props or {}
     local node = make_node("image", props)
     node._measure = shape_measure
+
+    local np_config = props.nine_patch
+    local parsed_np = nil
+
+    if type(np_config) == "table" then
+        local nine_patch = require("svglayout.nine_patch")
+        if np_config.blocks then
+            parsed_np = np_config
+            parsed_np.href = parsed_np.href or props.href
+        else
+            np_config.href = np_config.href or props.href
+            parsed_np = nine_patch.parse_config(np_config)
+        end
+    end
+
     function node:_render(ctx)
         local b = self._box
+
+        if parsed_np then
+            local nine_patch = require("svglayout.nine_patch")
+            local inner = nine_patch.render(ctx, parsed_np, b, props.nine_patch_repeat)
+            local skip = (self.style.background == nil) and (self.style.border == nil)
+            return render.render_box(self, inner, ctx, { skip_bg = skip })
+        end
+
         local attrs = {
             x = b.x, y = b.y, width = b.w, height = b.h,
             href = props.href,
@@ -494,13 +476,10 @@ function M.Image(props)
 end
 
 -- ============ 进阶容器组件 ============
--- Row / Column / ZStack 是 Box 的声明式别名，预设 direction 方向
--- Spacer / Divider 是常用的辅助容器元素
 
 ---创建水平弹性容器（Box + direction="row"）
----子节点沿水平方向排列，支持 flex、gap、justify、align 等布局属性
----@param props svglayout.ComponentProps 组件属性
----@return ComponentNode Row 节点对象
+---@param props svglayout.ComponentProps
+---@return ComponentNode
 function M.Row(props)
     props = props or {}
     local base_style = { direction = "row" }
@@ -509,10 +488,8 @@ function M.Row(props)
 end
 
 ---创建垂直弹性容器（Box + direction="column"）
----子节点沿垂直方向排列，支持 flex、gap、justify、align 等布局属性
----未显式声明高度时自动获得分页拆分能力
----@param props svglayout.ComponentProps 组件属性
----@return ComponentNode Column 节点对象
+---@param props svglayout.ComponentProps
+---@return ComponentNode
 function M.Column(props)
     props = props or {}
     local base_style = { direction = "column" }
@@ -521,10 +498,9 @@ function M.Column(props)
 end
 
 ---创建层叠容器（Box + direction="stack"）
----子节点在 Z 轴上层叠排列，后加入的子节点在上层
----常用于叠加文本标签、遮罩层等场景
----@param props svglayout.ComponentProps 组件属性
----@return ComponentNode ZStack 节点对象
+---子节点在 Z 轴上层叠排列
+---@param props svglayout.ComponentProps
+---@return ComponentNode
 function M.ZStack(props)
     props = props or {}
     local base_style = { direction = "stack" }
@@ -532,11 +508,9 @@ function M.ZStack(props)
     return M.Box(props)
 end
 
----创建弹性空白填充元素
----自动占据父容器主轴上的剩余空间，用于在 Row/Column 中推开其他元素
----等价于 Box { style = { flex = 1 } }
----@param props? svglayout.ComponentProps 组件属性
----@return ComponentNode Spacer 节点对象
+---创建弹性空白填充（Box + flex=1）
+---@param props? svglayout.ComponentProps
+---@return ComponentNode
 function M.Spacer(props)
     props = props or {}
     local base_style = { flex = 1 }
@@ -544,17 +518,16 @@ function M.Spacer(props)
     return M.Box(props)
 end
 
----@class svglayout.DividerProps 分割线组件属性
----@field color? string 分割线颜色，默认 "#e0e0e0"
----@field thickness? number 分割线粗细，默认 1
----@field direction? string 分割线方向，"horizontal" 或 "vertical"，默认 "horizontal"
----@field margin? number|table 分割线外边距，默认 { 8, 0, 8, 0 }
----@field style? table 附加样式表（可覆盖上述属性）
+---@class svglayout.DividerProps
+---@field color? string 颜色（默认 "#e0e0e0"）
+---@field thickness? number 粗细（默认 1）
+---@field direction? string "horizontal"|"vertical"（默认 "horizontal"）
+---@field margin? number|table 外边距（默认 {8,0,8,0}）
+---@field style? table 附加样式
 
 ---创建分割线组件
----作为视觉分隔元素，支持水平和垂直方向
----@param props svglayout.DividerProps 组件属性
----@return ComponentNode Divider 节点对象
+---@param props svglayout.DividerProps
+---@return ComponentNode
 function M.Divider(props)
     props = props or {}
     local color = props.color or "#e0e0e0"
@@ -564,19 +537,9 @@ function M.Divider(props)
 
     local base_style
     if dir == "vertical" then
-        base_style = {
-            width = thickness,
-            height = "fill",
-            background = color,
-            margin = margin,
-        }
+        base_style = { width = thickness, height = "fill", background = color, margin = margin }
     else
-        base_style = {
-            height = thickness,
-            width = "fill",
-            background = color,
-            margin = margin,
-        }
+        base_style = { height = thickness, width = "fill", background = color, margin = margin }
     end
     props.style = style_util.extend(base_style, props.style or {})
     return M.Box(props)

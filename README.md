@@ -4,18 +4,19 @@
 ![License](https://img.shields.io/badge/License-MIT-green.svg)
 ![Dependencies](https://img.shields.io/badge/Dependencies-0-brightgreen.svg)
 
-纯 Lua 5.5 实现的声明式 SVG 布局和渲染库，**零外部依赖**，提供 Flexbox 风格布局系统、丰富的内置组件和自动分页能力。
+纯 Lua 5.5 实现的声明式 SVG 布局和渲染库，**零外部依赖**，提供 Flexbox 风格的布局系统、丰富的内置组件和自动分页能力。
 
 ## 特性
 
-- **Flexbox 风格布局** — 支持 `row`、`column`、`stack` 三种布局方向，`justify`、`align`、`flex`、`gap`、`fill` 完整布局属性
-- **丰富的内置组件** — Box、Text、TextBlock、Rect、Circle、Line、Path、Row、Column、ZStack、Spacer、Divider、Group、Image、Raw、Builder
+- **Flexbox 风格布局** — 支持 `row`（水平）、`column`（纵向）、`stack`（重叠）三种方向，完整支持 `justify`、`align`、`flex`、`gap`、`fill` 属性
+- **丰富的内置组件** — Box、Text、TextBlock、Rect、Circle、Line、Path、Row、Column、ZStack、Spacer、Divider、Group、Image、Raw
 - **链式样式 API** — 参考 Compose Modifier 设计的 `svg.Style()` 链式调用
-- **自动分页** — 支持多页渲染，内置分页算法
+- **自动分页** — 支持多页渲染，自动识别页眉/内容/页脚区域
 - **渐变与图案** — LinearGradient、RadialGradient、Pattern 定义系统
-- **视觉特效** — 阴影（shadow）、高斯模糊（blur）、透明度（opacity）、SVG 变换（transform）、裁剪（clip）
-- **Builder 动态内容** — 渲染时回调构建子节点
-- **PageCallback** — 分页时感知页码和页数的动态组件
+- **视觉特效** — 阴影（shadow）、高斯模糊（blur）、透明度（opacity）、SVG 变换（transform）、裁剪（clip）、旋转（rotate）
+- **Builder 动态内容** — 渲染时回调动态构建子节点
+- **PageCallback / PageNumber** — 分页时感知页码和页数的组件
+- **九宫格（9-Patch）** — 支持图片九宫格拉伸和重复模式
 - **自定义组件** — 通过 `svg.define()` 和 `svg.register()` 扩展
 - **UTF-8 文本测量** — CJK 感知的文本宽度估算和自动换行
 - **EmmyLua 注解** — 完整的类型注解，支持 IDE 智能提示
@@ -74,7 +75,7 @@ f:close()
 | `svg.Row` | 水平容器，等价于 `Box { style = { direction = "row" } }` |
 | `svg.Column` | 纵向容器，等价于 `Box { style = { direction = "column" } }` |
 | `svg.ZStack` | 层叠容器，等价于 `Box { style = { direction = "stack" } }` |
-| `svg.Group` | SVG `<g>` 组，常用于统一应用 `transform` |
+| `svg.Group` | SVG `<g>` 组，统一应用 transform 等效果 |
 | `svg.Spacer` | 弹性空白填充，等价于 `Box { style = { flex = 1 } }` |
 | `svg.Divider` | 分割线，支持水平和垂直方向 |
 
@@ -98,10 +99,11 @@ f:close()
 
 | 组件 | 说明 |
 |------|------|
-| `svg.Image` | 图片嵌入，支持 `preserveAspectRatio` |
+| `svg.Image` | 图片嵌入，支持 `preserveAspectRatio` 和九宫格 |
 | `svg.Raw` | 原始 SVG 代码直接嵌入 |
 | `svg.Builder` | 动态内容生成器，渲染时回调构建子节点 |
-| `svg.PageCallback` | 分页页码组件，接收 `build(page, total)` 回调，每页渲染不同内容 |
+| `svg.PageCallback` | 分页页码组件，接收 `build(page, total)` 回调 |
+| `svg.PageNumber` | 模板页码组件，支持 `{page}/{total}` 模板变量 |
 
 ### 渐变与图案
 
@@ -121,8 +123,8 @@ local grad = svg.LinearGradient {
         { offset = 1, color = "#764ba2" },
     },
 }
--- style.background = grad.ref   -- 使用 .ref 引用
--- style.background = grad       -- 或直接传入定义对象（自动注册）
+-- 通过 background = grad 或 background = grad.ref 引用
+svg.Box { style = { width = 100, height = 100, background = grad } }
 ```
 
 ## 样式系统
@@ -131,8 +133,8 @@ local grad = svg.LinearGradient {
 
 | 属性 | 类型 | 说明 |
 |------|------|------|
-| `width` / `height` | number / string | 尺寸。支持数字、`"50%"` 百分比、`"fill"`（填充剩余空间）、`"auto"` |
-| `padding` / `margin` | number / table | 间距。数字表示四方向统一，支持 `{ top, right, bottom, left }` 或 `{ top, right }` 格式 |
+| `width` / `height` | number / string | 数字（固定值）、`"50%"`（百分比）、`"fill"`（填满）、`"auto"`（自适应） |
+| `padding` / `margin` | number / table | 数字统一间距；表支持 `{t,r,b,l}`、`{t,r}`（上下/左右）、`{top,right,bottom,left}` 命名键 |
 | `background` | string / def object | 背景色或渐变/图案定义对象 |
 | `border` | string / def object | 边框颜色 |
 | `border_width` | number | 边框线宽 |
@@ -143,10 +145,11 @@ local grad = svg.LinearGradient {
 | 属性 | 值 | 说明 |
 |------|-----|------|
 | `direction` | `"row"` / `"column"` / `"stack"` | 布局方向 |
-| `gap` | number | 子元素间距 |
+| `gap` | number | 子元素间距（像素） |
 | `justify` | `"start"` / `"center"` / `"end"` / `"space-between"` / `"space-around"` | 主轴对齐 |
 | `align` | `"start"` / `"center"` / `"end"` / `"stretch"` | 交叉轴对齐 |
 | `flex` | number | 弹性权重，>0 时按比例分配剩余空间 |
+| `fill` | `"fill"` 字符串 | 填满父容器剩余空间（等价于 `flex=1`） |
 
 ### 文本样式
 
@@ -157,16 +160,17 @@ local grad = svg.LinearGradient {
 | `font_weight` | string / number | 字重，如 `"bold"` 或 `700` |
 | `color` | string | 文本颜色 |
 | `text_align` | `"left"` / `"center"` / `"right"` | 水平对齐 |
-| `line_height` | number | 行高倍率（仅 TextBlock 生效） |
+| `line_height` | number | 行高倍率（相对 font_size，仅 TextBlock 生效） |
 
 ### 视觉特效
 
 | 属性 | 类型 | 说明 |
 |------|------|------|
-| `shadow` | table | `{ dx, dy, blur, color, opacity }` |
+| `shadow` | table | `{ dx?, dy?, blur?, color?, opacity? }` |
 | `blur` | number | 高斯模糊半径（px） |
-| `opacity` | number | 透明度，0~1 |
+| `opacity` | number | 透明度 0~1 |
 | `transform` | string | SVG transform 属性值 |
+| `rotate` | number / table | 旋转角度；支持数字或 `{angle, cx?, cy?}` |
 | `clip` | boolean | 是否裁剪到边界 |
 
 ### 形状属性
@@ -201,33 +205,32 @@ local box = svg.Box { style = s, children = { ... } }
 -- 合并已有样式
 local merged = svg.Style():font_size(16):merge({ background = "#f00", padding = 8 })
 
--- 转换回纯样式表
+-- 转换为普通样式表
 local plain = merged:to_table()
 ```
 
-完整方法列表：`width` / `height` / `size` / `flex` / `fillMaxWidth` / `fillMaxHeight` / `fillMaxSize` / `padding` / `margin` / `background` / `border` / `border_width` / `border_radius` / `fill` / `stroke` / `stroke_width` / `shadow` / `blur` / `opacity` / `transform` / `clip` / `direction` / `gap` / `justify` / `align` / `font_size` / `color` / `font_family` / `font_weight` / `text_align` / `line_height` / `merge` / `apply_to` / `to_table`
+完整方法：`width` / `height` / `size` / `flex` / `fillMaxWidth` / `fillMaxHeight` / `fillMaxSize` / `padding` / `margin` / `background` / `border` / `border_width` / `border_radius` / `fill` / `stroke` / `stroke_width` / `shadow` / `blur` / `opacity` / `transform` / `rotate` / `clip` / `direction` / `gap` / `justify` / `align` / `font_size` / `color` / `font_family` / `font_weight` / `text_align` / `line_height` / `merge` / `apply_to` / `to_table`
 
 ## 核心 API
 
 ### 渲染
 
 ```lua
--- 单页渲染
+-- 单页渲染：高度自动裁剪（nil 或 "auto" 时按内容自适应）
 svg.render_svg(root, { width = 800, height = 400 })
--- 高度为 "auto" 或未指定时自动按内容裁剪
 
 -- 多页渲染（自动分页）
 local pages = svg.render_pages(root, { width = 500, height = 700 })
 -- 返回字符串数组，每页一个 SVG 文档
 
--- 获取分页节点（不渲染，便于自定义处理）
+-- 获取分页节点数组（不渲染，便于自定义处理）
 local nodes = svg.paginate_nodes(root, { width = 500, height = 700 })
 ```
 
 ### 自定义组件
 
 ```lua
--- svg.define(): 创建无状态组件
+-- svg.define()：创建无状态组件工厂
 local Badge = svg.define(function(props)
     return svg.Box {
         style = { background = props.color or "#3498db", border_radius = 12, padding = { 4, 10 } },
@@ -238,21 +241,21 @@ local Badge = svg.define(function(props)
 end)
 Badge { text = "New", color = "#e74c3c" }
 
--- svg.register(): 全局注册，可通过 svg[name] 调用
+-- svg.register()：全局注册，可通过 svg[name] 访问
 svg.register("Badge", Badge)
 svg.Badge { text = "Global" }
 ```
 
 ### 组件协议
 
-自定义组件通过实现以下协议方法集成到布局系统：
+自定义组件通过实现以下方法集成到布局系统：
 
 | 方法 | 说明 |
 |------|------|
 | `_measure(self, hint_w, hint_h)` | 测量自然尺寸，返回 `width, height` |
 | `_render(self, ctx)` | 渲染为 SVG 字符串 |
 | `_split(self, avail_h)` | 分页拆分，返回 `first, rest` 或 `nil` |
-| `_register(self, ctx)` | 注册定义（渐变/图案等）到渲染上下文 |
+| `_register(self, ctx)` | 注册渐变/图案等 defs 到渲染上下文 |
 
 ## 分页系统
 
@@ -260,11 +263,11 @@ svg.Badge { text = "Global" }
 
 | 分区 | 说明 | 示例 |
 |------|------|------|
-| `pre_fixed` | 首个溢出节点之前、能容纳下的节点，在**每页顶部**重复 | 标题、表头、页首分割线 |
-| `overflow` | 需要跨页拆分的内容 | 数据列表、长表格 |
-| `post_fixed` | 末位溢出节点之后、能容纳下的节点，在**每页底部**重复 | 页码、页脚分割线 |
+| `pre_fixed` | 首个溢出节点之前能容纳的节点，在**每页顶部**重复 | 标题、表头 |
+| `overflow` | 需要跨页拆分的内容 | 数据列表、长文本 |
+| `post_fixed` | 末位溢出节点之后能容纳的节点，在**每页底部**重复 | 页码、页脚 |
 
-支持 `_split` 协议的组件（如 TextBlock）可跨页拆分；不可拆分的整块组件超出一页时会独占一页。
+支持 `_split` 协议的组件（如 TextBlock）可跨页拆分；不可拆分的整块组件超出一页时独占一页。
 
 ```lua
 -- 长列表分页
@@ -284,7 +287,7 @@ print(#pages .. " pages")
 
 ### PageCallback 页码组件
 
-在分页渲染时根据当前页码和总页数动态生成内容，常用于页码显示、自定义页眉页脚：
+在分页渲染时根据当前页码和总页数动态生成内容：
 
 ```lua
 svg.PageCallback {
@@ -301,11 +304,20 @@ svg.PageCallback {
 }
 ```
 
-`build(page, total)` 回调在每页渲染时执行，`page` 从 1 开始计数。作为 post_fixed 节点放置在容器末尾时，会自动在每一页底部重复显示。
+### PageNumber 模板页码组件
+
+比 PageCallback 更简洁，适合纯文本页码：
+
+```lua
+svg.PageNumber {
+    template = "{page} / {total}",
+    text_style = { font_size = 10, color = "#999" },
+}
+```
 
 ## Builder 动态内容
 
-Builder 组件在渲染阶段回调构建子节点，适用于数据驱动的动态内容：
+Builder 组件在渲染阶段回调构建子节点，适合数据驱动的动态内容：
 
 ```lua
 svg.Builder {
@@ -321,6 +333,26 @@ svg.Builder {
         end
         return items
     end,
+}
+```
+
+## 九宫格 (9-Patch)
+
+支持图片九宫格拉伸和重复模式渲染，适用于可伸缩的 UI 边框和背景。
+
+```lua
+svg.Image {
+    href = "frame.png",
+    style = { width = 200, height = 150 },
+    nine_patch = {
+        src_width = 100,   -- 源图内容区宽度
+        src_height = 100,  -- 源图内容区高度
+        left = 20,         -- 左侧固定区
+        right = 20,        -- 右侧固定区
+        top = 20,          -- 顶部固定区
+        bottom = 20,       -- 底部固定区
+        repeat_mode = "no-repeat",  -- 重复模式
+    },
 }
 ```
 
@@ -341,10 +373,12 @@ svglayout/
 │   ├── paginate.lua            # 分页系统
 │   ├── builder.lua             # Builder 动态内容组件
 │   ├── page_callback.lua       # PageCallback 页码组件
-│   └── defs.lua                # 渐变和图案定义
+│   ├── page_number.lua         # PageNumber 模板页码组件
+│   ├── defs.lua                # 渐变和图案定义
+│   └── nine_patch.lua          # 九宫格渲染引擎
 ├── example/                    # 示例
-│   └── demo.lua                # 综合示例（覆盖所有功能 + 性能测试）
-└── output/                     # 生成的 SVG 文件
+│   └── demo.lua                # 综合示例（覆盖所有功能）
+└── output/                     # 生成的 SVG 文件（运行示例后生成）
 ```
 
 ## 示例运行
@@ -354,7 +388,7 @@ cd example
 lua demo.lua
 ```
 
-示例输出位于 `output/` 目录，包含 10 个分类演示文件（`1_basic_components.svg` ~ `10_dashboard.svg`）以及分页测试文件（`9_page_*.svg`、`9_page_cb_*.svg`）。
+示例输出位于 `output/` 目录，包含 16 个分类演示文件以及分页测试文件。
 
 ## 许可
 

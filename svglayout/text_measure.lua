@@ -1,17 +1,15 @@
 ---@class svglayout.TextMeasure
 local M = {}
 
----默认字宽系数（相对 font_size）
----英文/数字：约 0.55；CJK：约 1.0；标点：约 0.35
+-- 字宽系数（相对 font_size）：英文 0.55、CJK 1.0、标点 0.35
 local DEFAULT_ASCII = 0.55
 local DEFAULT_CJK   = 1.0
 local DEFAULT_PUNCT = 0.35
 
 ---判断 Unicode 码点是否属于 CJK 字符范围
----覆盖汉字（CJK Unified Ideographs）、韩文（Hangul Syllables）、
----兼容表意文字（CJK Compatibility Ideographs）和全角标点（Fullwidth Forms）区域
+---覆盖 CJK 统一表意文字、韩文音节、兼容表意文字、全角标点
 ---@param cp integer Unicode 码点
----@return boolean 如果码点属于 CJK 范围则返回 true
+---@return boolean
 local function is_cjk(cp)
     return (cp >= 0x3000 and cp <= 0x9FFF)
         or (cp >= 0xAC00 and cp <= 0xD7AF)
@@ -19,7 +17,7 @@ local function is_cjk(cp)
         or (cp >= 0xFF00 and cp <= 0xFFEF)
 end
 
----常见 ASCII 标点符号查找表，用于宽度估算
+-- 常见 ASCII 标点字符码点查找表
 local ASCII_PUNCT = {
     [string.byte(",")] = true, [string.byte(".")] = true,
     [string.byte(";")] = true, [string.byte(":")] = true,
@@ -27,10 +25,9 @@ local ASCII_PUNCT = {
     [string.byte("'")] = true, [string.byte('"')] = true,
 }
 
----UTF-8 解码迭代器（仅码点）：依次返回字符串中每个字符的 Unicode 码点
----无字符串分配，适合只需码点进行宽度判断的场景（如 text_width）
----@param s string 要迭代的 UTF-8 字符串
----@return fun(): integer? 迭代器函数，每次调用返回 Unicode 码点
+---UTF-8 码点迭代器（仅返回码点，无字符串分配）
+---@param s string UTF-8 字符串
+---@return fun(): integer? 迭代函数，每次返回一个 Unicode 码点
 function M.utf8_iter_cp(s)
     local i = 1
     local len = #s
@@ -50,10 +47,10 @@ function M.utf8_iter_cp(s)
     end
 end
 
----UTF-8 解码迭代器（完整）：依次返回字符串中每个字符的码点和字符子串
----相比 utf8_iter_cp 多一次 string.sub 分配，适合需要子串的场景（如 wrap）
----@param s string 要迭代的 UTF-8 字符串
----@return fun(): integer?, string? 迭代器函数，每次调用返回 (码点, 字符子串)
+---UTF-8 字符迭代器（返回码点和字符子串）
+---比 utf8_iter_cp 多一次 sub 分配，适合需要子串的场景（如换行）
+---@param s string UTF-8 字符串
+---@return fun(): integer?, string? 迭代函数，返回 (码点, 字符)
 function M.utf8_iter(s)
     local i = 1
     local len = #s
@@ -75,11 +72,10 @@ function M.utf8_iter(s)
     end
 end
 
----估算单个字符的宽度（倍率 × font_size）
----CJK 字符按 1.0 倍率，ASCII 标点按 0.35 倍率，其他按 0.55 倍率
+---估算单个字符的渲染宽度 = font_size * 字宽系数
 ---@param cp integer Unicode 码点
----@param font_size number 字体大小（像素）
----@return number 预估字符宽度（像素）
+---@param font_size number 字体大小（px）
+---@return number 预估宽度（px）
 ---@nodiscard
 function M.char_width(cp, font_size)
     if is_cjk(cp) then return font_size * DEFAULT_CJK end
@@ -87,11 +83,10 @@ function M.char_width(cp, font_size)
     return font_size * DEFAULT_ASCII
 end
 
----估算整行文本的总宽度
----遍历所有字符累加宽度，不处理换行符
----@param text string 要测量的文本字符串
----@param font_size number 字体大小（像素）
----@return number 预估文本总宽度（像素）
+---估算整行文本总宽度（遍历字符累加，不处理换行符）
+---@param text string 文本
+---@param font_size number 字体大小（px）
+---@return number 总宽度（px）
 ---@nodiscard
 function M.text_width(text, font_size)
     local w = 0
@@ -101,15 +96,12 @@ function M.text_width(text, font_size)
     return w
 end
 
----根据最大宽度对文本进行换行，返回行数组
----处理策略：
---- - CJK 字符：逐字拆分，超过宽度时换行
---- - 英文单词：按空格拆分，单词超长时强制截断
---- - 显式换行符（`\n`）：直接分段
----@param text string 要换行的文本
----@param max_width number 最大行宽（像素）
----@param font_size number 字体大小（像素）
----@return string[] 换行后的行数组，每行一个字符串
+---按最大宽度对文本换行，返回行数组
+---策略：CJK 逐字拆分超宽换行；英文按空格分词，超长单词强制截断；`\n` 显式分段
+---@param text string 文本
+---@param max_width number 最大行宽（px）
+---@param font_size number 字体大小（px）
+---@return string[] 行数组
 ---@nodiscard
 function M.wrap(text, max_width, font_size)
     if max_width <= 0 then return { text } end
@@ -123,6 +115,7 @@ function M.wrap(text, max_width, font_size)
             local word = ""
             local word_w = 0
 
+            -- 将缓存的单词刷入当前行；放不下时另起一行
             local function flush_word()
                 if word == "" then return end
                 if line_w + word_w <= max_width or #line_parts == 0 then
@@ -140,6 +133,7 @@ function M.wrap(text, max_width, font_size)
             for cp, ch in M.utf8_iter(paragraph) do
                 local cw = M.char_width(cp, font_size)
                 if is_cjk(cp) then
+                    -- CJK 字符按单字处理，超宽则换行
                     flush_word()
                     if line_w + cw <= max_width or #line_parts == 0 then
                         line_parts[#line_parts + 1] = ch
@@ -150,6 +144,7 @@ function M.wrap(text, max_width, font_size)
                         line_w = cw
                     end
                 elseif ch == " " then
+                    -- 空格作为单词分隔符，仅当不在行首时消耗宽度
                     flush_word()
                     if #line_parts > 0 then
                         if line_w + cw <= max_width then
@@ -162,6 +157,7 @@ function M.wrap(text, max_width, font_size)
                         end
                     end
                 else
+                    -- 非 CJK 非空格字符，组装为单词
                     if word_w + cw > max_width then
                         if #line_parts > 0 then
                             lines[#lines + 1] = table.concat(line_parts)
