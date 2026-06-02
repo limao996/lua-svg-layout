@@ -35,11 +35,12 @@ function M.utf8_iter_cp(s)
     local i = 1
     local len = #s
     return function()
+        ::restart::
         if i > len then return nil end
         local b = string.byte(s, i)
         local bytes
         if b < 0x80 then bytes = 1
-        elseif b < 0xC0 then bytes = 1
+        elseif b < 0xC0 then i = i + 1; goto restart
         elseif b < 0xE0 then bytes = 2
         elseif b < 0xF0 then bytes = 3
         else bytes = 4 end
@@ -57,11 +58,12 @@ function M.utf8_iter(s)
     local i = 1
     local len = #s
     return function()
+        ::restart::
         if i > len then return nil end
         local b = string.byte(s, i)
         local bytes
         if b < 0x80 then bytes = 1
-        elseif b < 0xC0 then bytes = 1
+        elseif b < 0xC0 then i = i + 1; goto restart
         elseif b < 0xE0 then bytes = 2
         elseif b < 0xF0 then bytes = 3
         else bytes = 4 end
