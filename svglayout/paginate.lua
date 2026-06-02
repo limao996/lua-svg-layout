@@ -3,7 +3,6 @@ local M = {}
 
 local layout = require("svglayout.layout")
 local core = require("svglayout.core")
-local style_util = require("svglayout.style")
 
 ---@class svglayout.PageNode 分页生成的页面节点
 ---@field type string 节点类型
@@ -23,9 +22,7 @@ local function measure_child_height(child, content_w)
         return s.height
     end
     if type(s.height) == "string" then
-        local pct = s.height:match("^(%-?[%d%.]+)%%$")
         if tonumber(s.height) then return tonumber(s.height) end
-        if pct then end
     end
     local _, ih = layout.measure(child, content_w, nil)
     return ih
@@ -206,6 +203,14 @@ function M.paginate(root, page_w, page_h)
         end
     end
     flush()
+
+    for _, pg in ipairs(pages) do
+        local s = pg.style
+        local saved_h = s and s.height
+        if s then s.height = page_h end
+        layout.layout(pg, 0, 0, page_w, page_h)
+        if s then s.height = saved_h end
+    end
 
     return pages
 end

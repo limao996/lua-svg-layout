@@ -42,7 +42,6 @@ function M.Builder(props)
         end
         self.children = collected
         local style = self.style or {}
-        local pad = require("svglayout.style").normalize_spacing(style.padding)
         local cursor = 0
         local dir = style.direction or "column"
         local gap = style.gap or 0

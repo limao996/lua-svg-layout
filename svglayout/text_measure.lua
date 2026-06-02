@@ -27,10 +27,32 @@ local ASCII_PUNCT = {
     [string.byte("'")] = true, [string.byte('"')] = true,
 }
 
----UTF-8 解码迭代器：依次返回字符串中每个字符的码点、字符子串、字节起止位置
----支持 1~4 字节的 UTF-8 编码序列
+---UTF-8 解码迭代器（仅码点）：依次返回字符串中每个字符的 Unicode 码点
+---无字符串分配，适合只需码点进行宽度判断的场景（如 text_width）
 ---@param s string 要迭代的 UTF-8 字符串
----@return fun(): integer?, string?, integer?, integer? 迭代器函数，每次调用返回 (码点, 字符, 字节起始位置, 字节结束位置)
+---@return fun(): integer? 迭代器函数，每次调用返回 Unicode 码点
+function M.utf8_iter_cp(s)
+    local i = 1
+    local len = #s
+    return function()
+        if i > len then return nil end
+        local b = string.byte(s, i)
+        local bytes
+        if b < 0x80 then bytes = 1
+        elseif b < 0xC0 then bytes = 1
+        elseif b < 0xE0 then bytes = 2
+        elseif b < 0xF0 then bytes = 3
+        else bytes = 4 end
+        local cp = utf8.codepoint(s, i)
+        i = i + bytes
+        return cp
+    end
+end
+
+---UTF-8 解码迭代器（完整）：依次返回字符串中每个字符的码点和字符子串
+---相比 utf8_iter_cp 多一次 string.sub 分配，适合需要子串的场景（如 wrap）
+---@param s string 要迭代的 UTF-8 字符串
+---@return fun(): integer?, string? 迭代器函数，每次调用返回 (码点, 字符子串)
 function M.utf8_iter(s)
     local i = 1
     local len = #s
@@ -43,12 +65,11 @@ function M.utf8_iter(s)
         elseif b < 0xE0 then bytes = 2
         elseif b < 0xF0 then bytes = 3
         else bytes = 4 end
-        local j = math.min(i + bytes - 1, len)
+        local j = i + bytes - 1
         local ch = s:sub(i, j)
         local cp = utf8.codepoint(s, i)
-        local start = i
         i = j + 1
-        return cp, ch, start, j
+        return cp, ch
     end
 end
 
@@ -72,7 +93,7 @@ end
 ---@nodiscard
 function M.text_width(text, font_size)
     local w = 0
-    for cp in M.utf8_iter(text) do
+    for cp in M.utf8_iter_cp(text) do
         w = w + M.char_width(cp, font_size)
     end
     return w
@@ -95,19 +116,19 @@ function M.wrap(text, max_width, font_size)
         if paragraph == "" then
             lines[#lines + 1] = ""
         else
-            local line = ""
+            local line_parts = {}
             local line_w = 0
             local word = ""
             local word_w = 0
 
             local function flush_word()
                 if word == "" then return end
-                if line_w + word_w <= max_width or line == "" then
-                    line = line .. word
+                if line_w + word_w <= max_width or #line_parts == 0 then
+                    line_parts[#line_parts + 1] = word
                     line_w = line_w + word_w
                 else
-                    lines[#lines + 1] = line
-                    line = word
+                    lines[#lines + 1] = table.concat(line_parts)
+                    line_parts = { word }
                     line_w = word_w
                 end
                 word = ""
@@ -118,31 +139,32 @@ function M.wrap(text, max_width, font_size)
                 local cw = M.char_width(cp, font_size)
                 if is_cjk(cp) then
                     flush_word()
-                    if line_w + cw <= max_width or line == "" then
-                        line = line .. ch
+                    if line_w + cw <= max_width or #line_parts == 0 then
+                        line_parts[#line_parts + 1] = ch
                         line_w = line_w + cw
                     else
-                        lines[#lines + 1] = line
-                        line = ch
+                        lines[#lines + 1] = table.concat(line_parts)
+                        line_parts = { ch }
                         line_w = cw
                     end
                 elseif ch == " " then
                     flush_word()
-                    if line ~= "" then
+                    if #line_parts > 0 then
                         if line_w + cw <= max_width then
-                            line = line .. ch
+                            line_parts[#line_parts + 1] = ch
                             line_w = line_w + cw
                         else
-                            lines[#lines + 1] = line
-                            line = ""
+                            lines[#lines + 1] = table.concat(line_parts)
+                            line_parts = {}
                             line_w = 0
                         end
                     end
                 else
                     if word_w + cw > max_width then
-                        if line ~= "" then
-                            lines[#lines + 1] = line
-                            line = ""; line_w = 0
+                        if #line_parts > 0 then
+                            lines[#lines + 1] = table.concat(line_parts)
+                            line_parts = {}
+                            line_w = 0
                         end
                         lines[#lines + 1] = word
                         word = ch
@@ -154,7 +176,7 @@ function M.wrap(text, max_width, font_size)
                 end
             end
             flush_word()
-            lines[#lines + 1] = line
+            lines[#lines + 1] = table.concat(line_parts)
         end
     end
     return lines

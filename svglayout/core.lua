@@ -24,18 +24,6 @@ function M.shallow_copy(t)
     return r
 end
 
----合并两个表并返回新表，b 中的键值会覆盖 a 中的同名键
----@generic T1: table, T2: table
----@param a T1 基础表，作为合并的起点
----@param b T2 覆盖表，其键值将覆盖 a 中的同名项
----@return T1|T2 合并后的新表，不会修改原始表
----@nodiscard
-function M.merge(a, b)
-    local r = M.shallow_copy(a or {})
-    if b then for k, v in pairs(b) do r[k] = v end end
-    return r
-end
-
 ---序列化属性表为 SVG 标签属性字符串
 ---键按字母顺序排序以确保输出可预测；值为 nil 或 false 的键会被自动跳过
 ---@param attrs table<string, any> 属性键值对表
@@ -65,6 +53,25 @@ local _id = 0
 function M.gen_id(prefix)
     _id = _id + 1
     return (prefix or "id") .. _id
+end
+
+---根据文本对齐方式计算 SVG text-anchor 属性和 X 坐标
+---支持 left（默认）、center、right 三种对齐方式
+---@param align string 对齐方式，可选值为 "left"、"center"、"right"
+---@param content_x number 内容区左边界 X 坐标
+---@param content_w number 内容区宽度
+---@return string anchor SVG text-anchor 属性值（"start"、"middle" 或 "end"）
+---@return number tx 文本的 X 坐标
+---@nodiscard
+function M.compute_text_alignment(align, content_x, content_w)
+    align = align or "left"
+    if align == "center" then
+        return "middle", content_x + content_w / 2
+    elseif align == "right" then
+        return "end", content_x + content_w
+    else
+        return "start", content_x
+    end
 end
 
 return M

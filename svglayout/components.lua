@@ -164,11 +164,7 @@ function M.Text(props)
         local b = self._box
         local s = self.style
         local fs = s.font_size or 14
-        local align = s.text_align or "left"
-        local anchor, tx
-        if align == "center" then anchor = "middle"; tx = b.content_x + b.content_w / 2
-        elseif align == "right" then anchor = "end"; tx = b.content_x + b.content_w
-        else anchor = "start"; tx = b.content_x end
+        local anchor, tx = core.compute_text_alignment(s.text_align, b.content_x, b.content_w)
         local ty = b.content_y + fs
         local attrs = {
             x = tx, y = ty,
@@ -274,11 +270,7 @@ function M.TextBlock(props)
         if not self._lines or self._last_cw ~= b.content_w then
             compute_lines(self, b.content_w)
         end
-        local align = s.text_align or "left"
-        local anchor, tx
-        if align == "center" then anchor = "middle"; tx = b.content_x + b.content_w / 2
-        elseif align == "right" then anchor = "end"; tx = b.content_x + b.content_w
-        else anchor = "start"; tx = b.content_x end
+        local anchor, tx = core.compute_text_alignment(s.text_align, b.content_x, b.content_w)
 
         local parts = { string.format(
             '<text font-family="%s" font-size="%s" fill="%s" text-anchor="%s"%s>',

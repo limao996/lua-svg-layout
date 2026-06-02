@@ -88,11 +88,6 @@ function M.render_pages(root, opts)
     local pages = paginate.paginate(root, w, h)
     local out = {}
     for i, pg in ipairs(pages) do
-        local saved_h = pg.style and pg.style.height
-        if pg.style then pg.style.height = h end
-        layout.layout(pg, 0, 0, w, h)
-        if pg.style then pg.style.height = saved_h end
-
         local ctx = { defs = {}, page = i, total_pages = #pages }
         local body = render.render(pg, ctx)
         out[i] = wrap_svg(body, ctx.defs, w, h)
