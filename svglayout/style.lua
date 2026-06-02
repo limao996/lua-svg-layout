@@ -6,7 +6,7 @@ local M = {}
 ---{t,r,b,l} → 顺序映射；{t,r} → 上下=t，左右=r；
 ---{top=t,right=r,bottom=b,left=l} → 命名键映射
 ---@param p? number|number[]|table 间距值
----@return number[4] [top, right, bottom, left]
+---@return number[] [top, right, bottom, left]
 ---@nodiscard
 function M.normalize_spacing(p)
     if p == nil then return { 0, 0, 0, 0 } end

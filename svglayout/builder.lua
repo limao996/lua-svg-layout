@@ -11,7 +11,7 @@ local M = {}
 ---创建 Builder 动态内容生成组件
 ---回调在渲染阶段执行，可根据运行时上下文动态构建子节点
 ---渲染时对子节点重新布局，支持动态内容的尺寸自适应
----@param props {build:fun(ctx:svglayout.BuilderContext):table|table[], style?:table}
+---@param props? {build:fun(ctx:svglayout.BuilderContext):table|table[], style:table?}
 ---@return table Builder 节点
 function M.Builder(props)
     local components = require("svglayout.components")
@@ -48,6 +48,7 @@ function M.Builder(props)
         local style = self.style or {}
         local dir = style.direction or "column"
         local gap = style.gap or 0
+        local pad = style_util.normalize_spacing(style.padding)
 
         local collected = build_children(self, { content_w = hint_w or 0, content_h = hint_h or 0 })
         self._built_children = collected
@@ -57,7 +58,8 @@ function M.Builder(props)
         for i, child in ipairs(collected) do
             if i > 1 then total_main = total_main + gap end
             if dir == "row" then
-                local cw, ch = layout.measure(child)
+                local child_h = hint_h and (hint_h - pad[1] - pad[3]) or nil
+                local cw, ch = layout.measure(child, nil, child_h)
                 total_main = total_main + cw
                 if ch > cross_max then cross_max = ch end
             else
@@ -68,7 +70,7 @@ function M.Builder(props)
         end
 
         local content_w = (dir == "row") and total_main or cross_max
-        local content_h = (dir == "column") and total_main or 0
+        local content_h = (dir == "column") and total_main or cross_max
         return content_w, content_h
     end
 

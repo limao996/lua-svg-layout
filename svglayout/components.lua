@@ -10,8 +10,8 @@ local style_util = require("svglayout.style")
 ---@alias ComponentNode table 组件节点（含 style、children、_measure、_render 等字段）
 
 ---@class svglayout.ComponentProps 通用属性
----@field style? table 样式表
----@field children? table[] 子节点
+---@field style table? 样式表
+---@field children table[]? 子节点
 
 ---创建节点对象
 ---若 style 是 Style 实例，自动物化为纯样式表
@@ -41,7 +41,7 @@ end
 
 ---创建通用弹性容器组件
 ---direction="column" 且未显式声明高度时自动获得分页拆分能力
----@param props svglayout.ComponentProps
+---@param props? svglayout.ComponentProps
 ---@return ComponentNode
 function M.Box(props)
     props = props or {}
@@ -124,12 +124,12 @@ end
 -- ============ Text（单行） ============
 
 ---@class svglayout.TextProps
----@field text? string 文本
----@field style? table 样式
+---@field text string? 文本
+---@field style table? 样式
 
 ---创建单行文本组件
 ---支持颜色、字体大小、水平对齐等样式控制
----@param props svglayout.TextProps
+---@param props? svglayout.TextProps
 ---@return ComponentNode
 function M.Text(props)
     props = props or {}
@@ -168,14 +168,14 @@ end
 
 -- ============ TextBlock（多行） ============
 
----@class svglayout.TextBlockProps
----@field text? string 文本
----@field line_height? number 行高倍率（默认 1.4）
----@field style? table 样式
+---@class svglayout.TextBlockProps 多行文本属性
+---@field text string? 文本
+---@field line_height number? 行高倍率（默认 1.4）
+---@field style table? 样式
 
 ---创建多行文本组件
 ---支持自动换行和分页拆分；CJK 逐字换行，英文按空格换行
----@param props svglayout.TextBlockProps
+---@param props? svglayout.TextBlockProps
 ---@return ComponentNode
 function M.TextBlock(props)
     props = props or {}
@@ -276,10 +276,10 @@ local function shape_measure(self)
 end
 
 ---@class svglayout.RectProps
----@field style? table 支持 fill、stroke、stroke_width、border_radius
+---@field style table? 支持 fill、stroke、stroke_width、border_radius
 
 ---创建矩形组件，支持圆角和填充/描边
----@param props svglayout.RectProps
+---@param props? svglayout.RectProps
 ---@return ComponentNode
 function M.Rect(props)
     props = props or {}
@@ -301,11 +301,11 @@ function M.Rect(props)
 end
 
 ---@class svglayout.CircleProps
----@field r? number 半径（仅未通过 style.width/height 设置时生效）
----@field style? table
+---@field r number? 半径（仅未通过 style.width/height 设置时生效）
+---@field style table?
 
 ---创建圆形组件
----@param props svglayout.CircleProps
+---@param props? svglayout.CircleProps
 ---@return ComponentNode
 function M.Circle(props)
     props = props or {}
@@ -334,14 +334,14 @@ function M.Circle(props)
 end
 
 ---@class svglayout.LineProps
----@field x1? number 起点 X（默认左边界）
----@field y1? number 起点 Y（默认上边界）
----@field x2? number 终点 X（默认右边界）
----@field y2? number 终点 Y（默认下边界）
----@field style? table
+---@field x1 number? 起点 X（默认左边界）
+---@field y1 number? 起点 Y（默认上边界）
+---@field x2 number? 终点 X（默认右边界）
+---@field y2 number? 终点 Y（默认下边界）
+---@field style table?
 
 ---创建线条组件
----@param props svglayout.LineProps
+---@param props? svglayout.LineProps
 ---@return ComponentNode
 function M.Line(props)
     props = props or {}
@@ -363,10 +363,10 @@ end
 
 ---@class svglayout.PathProps
 ---@field d string SVG path 数据
----@field style? table
+---@field style table?
 
 ---创建 SVG 路径组件
----@param props svglayout.PathProps
+---@param props? svglayout.PathProps
 ---@return ComponentNode
 function M.Path(props)
     props = props or {}
@@ -390,7 +390,7 @@ end
 
 ---创建 SVG 组组件
 ---用于将多个元素组合，统一应用变换、透明度等效果
----@param props svglayout.ComponentProps
+---@param props? svglayout.ComponentProps
 ---@return ComponentNode
 function M.Group(props)
     props = props or {}
@@ -408,7 +408,7 @@ end
 -- ============ Raw ============
 
 ---创建原始 SVG 组件（直接嵌入任意 SVG 代码）
----@param props {svg?:string, style?:table}
+---@param props? {svg:string?, style:table?}
 ---@return ComponentNode
 function M.Raw(props)
     props = props or {}
@@ -425,14 +425,14 @@ end
 -- ============ Image ============
 
 ---@class svglayout.ImageProps
----@field href? string 图片 URL
----@field preserve_aspect_ratio? string SVG preserveAspectRatio（默认 "xMidYMid meet"）
----@field nine_patch? svglayout.NinePatchConfig|boolean 九宫格配置
----@field nine_patch_repeat? table<string,string> 逐块重复模式覆盖
----@field style? table
+---@field href string? 图片 URL
+---@field preserve_aspect_ratio string? SVG preserveAspectRatio（默认 "xMidYMid meet"）
+---@field nine_patch (svglayout.NinePatchConfig|boolean)? 九宫格配置
+---@field nine_patch_repeat (table<string,string>)? 逐块重复模式覆盖
+---@field style table?
 
 ---创建图像组件，支持普通嵌入和九宫格渲染
----@param props svglayout.ImageProps
+---@param props? svglayout.ImageProps
 ---@return ComponentNode
 function M.Image(props)
     props = props or {}
@@ -478,7 +478,7 @@ end
 -- ============ 进阶容器组件 ============
 
 ---创建水平弹性容器（Box + direction="row"）
----@param props svglayout.ComponentProps
+---@param props? svglayout.ComponentProps
 ---@return ComponentNode
 function M.Row(props)
     props = props or {}
@@ -488,7 +488,7 @@ function M.Row(props)
 end
 
 ---创建垂直弹性容器（Box + direction="column"）
----@param props svglayout.ComponentProps
+---@param props? svglayout.ComponentProps
 ---@return ComponentNode
 function M.Column(props)
     props = props or {}
@@ -499,7 +499,7 @@ end
 
 ---创建层叠容器（Box + direction="stack"）
 ---子节点在 Z 轴上层叠排列
----@param props svglayout.ComponentProps
+---@param props? svglayout.ComponentProps
 ---@return ComponentNode
 function M.ZStack(props)
     props = props or {}
@@ -519,14 +519,14 @@ function M.Spacer(props)
 end
 
 ---@class svglayout.DividerProps
----@field color? string 颜色（默认 "#e0e0e0"）
----@field thickness? number 粗细（默认 1）
----@field direction? string "horizontal"|"vertical"（默认 "horizontal"）
----@field margin? number|table 外边距（默认 {8,0,8,0}）
----@field style? table 附加样式
+---@field color string? 颜色（默认 "#e0e0e0"）
+---@field thickness number? 粗细（默认 1）
+---@field direction string? "horizontal"|"vertical"（默认 "horizontal"）
+---@field margin (number|table)? 外边距（默认 {8,0,8,0}）
+---@field style table? 附加样式
 
 ---创建分割线组件
----@param props svglayout.DividerProps
+---@param props? svglayout.DividerProps
 ---@return ComponentNode
 function M.Divider(props)
     props = props or {}

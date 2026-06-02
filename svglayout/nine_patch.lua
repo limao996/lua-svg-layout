@@ -11,9 +11,9 @@ local core = require("svglayout.core")
 ---@field right number|string 右侧固定区宽度（支持百分比）
 ---@field top number|string 顶部固定区高度（支持百分比）
 ---@field bottom number|string 底部固定区高度（支持百分比）
----@field repeat_mode? string 默认重复模式，默认 "no-repeat"
----@field block_repeat? table<string,string> 逐块重复模式覆盖
----@field scale? number 源素材缩放倍率，默认 1
+---@field repeat_mode string? 默认重复模式，默认 "no-repeat"
+---@field block_repeat (table<string,string>)? 逐块重复模式覆盖
+---@field scale number? 源素材缩放倍率，默认 1
 
 ---@class svglayout.NinePatchBlock 九宫格块
 ---@field name string "tl"|"t"|"tr"|"l"|"c"|"r"|"bl"|"b"|"br"
@@ -44,7 +44,7 @@ local function resolve_pct(val, total)
             return total * tonumber(pct) / 100
         end
     end
-    return val or 0
+    return val or 0 ---@type number
 end
 
 ---解析 9.png 配置，生成九宫格块定义
@@ -74,15 +74,15 @@ function M.parse_config(config)
 
     -- 行优先排列 9 个块：左上→上→右上→左→中→右→左下→下→右下
     local blocks = {
-        { name = "tl", sx = 0, sy = 0, sw = left, sh = top, stretch_x = false, stretch_y = false },
-        { name = "t",  sx = left, sy = 0, sw = stretch_w, sh = top, stretch_x = true, stretch_y = false },
-        { name = "tr", sx = left + stretch_w, sy = 0, sw = right, sh = top, stretch_x = false, stretch_y = false },
-        { name = "l",  sx = 0, sy = top, sw = left, sh = stretch_h, stretch_x = false, stretch_y = true },
-        { name = "c",  sx = left, sy = top, sw = stretch_w, sh = stretch_h, stretch_x = true, stretch_y = true },
-        { name = "r",  sx = left + stretch_w, sy = top, sw = right, sh = stretch_h, stretch_x = false, stretch_y = true },
-        { name = "bl", sx = 0, sy = top + stretch_h, sw = left, sh = bottom, stretch_x = false, stretch_y = false },
-        { name = "b",  sx = left, sy = top + stretch_h, sw = stretch_w, sh = bottom, stretch_x = true, stretch_y = false },
-        { name = "br", sx = left + stretch_w, sy = top + stretch_h, sw = right, sh = bottom, stretch_x = false, stretch_y = false },
+        { name = "tl", sx = 0,                sy = 0,               sw = left,      sh = top,       stretch_x = false, stretch_y = false },
+        { name = "t",  sx = left,             sy = 0,               sw = stretch_w, sh = top,       stretch_x = true,  stretch_y = false },
+        { name = "tr", sx = left + stretch_w, sy = 0,               sw = right,     sh = top,       stretch_x = false, stretch_y = false },
+        { name = "l",  sx = 0,                sy = top,             sw = left,      sh = stretch_h, stretch_x = false, stretch_y = true },
+        { name = "c",  sx = left,             sy = top,             sw = stretch_w, sh = stretch_h, stretch_x = true,  stretch_y = true },
+        { name = "r",  sx = left + stretch_w, sy = top,             sw = right,     sh = stretch_h, stretch_x = false, stretch_y = true },
+        { name = "bl", sx = 0,                sy = top + stretch_h, sw = left,      sh = bottom,    stretch_x = false, stretch_y = false },
+        { name = "b",  sx = left,             sy = top + stretch_h, sw = stretch_w, sh = bottom,    stretch_x = true,  stretch_y = false },
+        { name = "br", sx = left + stretch_w, sy = top + stretch_h, sw = right,     sh = bottom,    stretch_x = false, stretch_y = false },
     }
 
     local default_repeat = config.repeat_mode or "no-repeat"

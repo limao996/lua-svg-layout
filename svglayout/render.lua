@@ -5,15 +5,15 @@ local core = require("svglayout.core")
 
 ---@class svglayout.RenderContext 渲染上下文
 ---@field defs string[] SVG defs 定义列表（滤镜、裁剪路径、渐变等）
----@field page? number 当前页码（分页渲染时）
----@field total_pages? number 总页数（分页渲染时）
+---@field page number? 当前页码（分页渲染时）
+---@field total_pages number? 总页数（分页渲染时）
 
 ---@class svglayout.ShadowStyle 阴影配置
----@field dx? number 水平偏移（默认 2）
----@field dy? number 垂直偏移（默认 2）
----@field blur? number 模糊半径（默认 3）
----@field color? string 颜色（默认 "#000000"）
----@field opacity? number 透明度（默认 0.35）
+---@field dx number? 水平偏移（默认 2）
+---@field dy number? 垂直偏移（默认 2）
+---@field blur number? 模糊半径（默认 3）
+---@field color string? 颜色（默认 "#000000"）
+---@field opacity number? 透明度（默认 0.35）
 
 ---解析 paint 值：字符串直接返回；定义对象（渐变/图案）注册 def 并返回 url(#id) 引用
 ---@param v any 颜色值或定义对象
@@ -95,7 +95,7 @@ end
 
 ---渲染节点为 SVG 字符串（调用节点的 _render 协议方法）
 ---@param node table 节点
----@param ctx table 渲染上下文
+---@param ctx? table 渲染上下文
 ---@return string SVG 片段
 function M.render(node, ctx)
     ctx = ctx or { defs = {} }
@@ -110,7 +110,7 @@ end
 ---@param node table 节点
 ---@param inner_svg string 子内容 SVG
 ---@param ctx table 渲染上下文
----@param opts? {skip_bg?:boolean} 选项，skip_bg=true 跳过背景/边框矩形（供形状组件用）
+---@param opts? {skip_bg:boolean?} 选项，skip_bg=true 跳过背景/边框矩形（供形状组件用）
 ---@return string 包装后的 SVG
 function M.render_box(node, inner_svg, ctx, opts)
     opts = opts or {}

@@ -61,7 +61,7 @@ end
 -- ==================== 间距 ====================
 
 ---设置内边距（支持数字或数组格式）
----@param v number|number[]|{top?:number,right?:number,bottom?:number,left?:number}
+---@param v number|number[]|{top:number?,right:number?,bottom:number?,left:number?}
 ---@return self
 function methods:padding(v)
     self._props.padding = type(v) == "table" and style_util.normalize_spacing(v) or v
@@ -69,7 +69,7 @@ function methods:padding(v)
 end
 
 ---设置外边距（支持数字或数组格式）
----@param v number|number[]|{top?:number,right?:number,bottom?:number,left?:number}
+---@param v number|number[]|{top:number?,right:number?,bottom:number?,left:number?}
 ---@return self
 function methods:margin(v)
     self._props.margin = type(v) == "table" and style_util.normalize_spacing(v) or v
@@ -132,7 +132,7 @@ end
 -- ==================== 视觉效果 ====================
 
 ---设置阴影
----@param v {dx?:number,dy?:number,blur?:number,color?:string,opacity?:number}
+---@param v {dx:number?,dy:number?,blur:number?,color:string?,opacity:number?}
 ---@return self
 function methods:shadow(v)
     self._props.shadow = v; return self
@@ -161,7 +161,7 @@ end
 
 ---设置旋转角度
 ---支持数字（绕中心）或 {angle, cx?, cy?} 表格式
----@param v number|{angle:number, cx?:number|string, cy?:number|string}
+---@param v number|{angle:number, cx:(number|string)?, cy:(number|string)?}
 ---@return self
 function methods:rotate(v)
     self._props.rotate = v; return self
@@ -262,14 +262,14 @@ function methods:merge(other)
 end
 
 ---将当前样式应用到节点
----@param node table 目标节点
+---@param node table? 目标节点
 ---@return table
 function methods:apply_to(node)
     if node then
         if not node.style then node.style = {} end
         for k, v in pairs(self._props) do node.style[k] = v end
     end
-    return node
+    return node ---@type table
 end
 
 ---返回原始样式属性表

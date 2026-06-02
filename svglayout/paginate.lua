@@ -9,7 +9,7 @@ local core = require("svglayout.core")
 ---@field style table 样式（继承自根节点）
 ---@field children table[] 该页子节点
 ---@field _id string 页面 ID
----@field _render? fun(self:table, ctx:table):string 渲染方法
+---@field _render (fun(self:table, ctx:table):string)? 渲染方法
 
 ---测量子节点在分页中的实际高度
 ---跳过 flex/fill 声明（避免吞掉整页剩余空间）
@@ -22,7 +22,9 @@ local function measure_child_height(child, content_w)
         return s.height
     end
     if type(s.height) == "string" then
-        if tonumber(s.height) then return tonumber(s.height) end
+        if tonumber(s.height) then
+            return tonumber(s.height) ---@type number
+        end
     end
     local _, ih = layout.measure(child, content_w, nil)
     return ih
